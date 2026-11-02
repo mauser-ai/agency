@@ -15,6 +15,30 @@ su NotebookLM. Da quando premi *Stop* puoi chiudere il Mac. Nell'elenco vedi lo 
 
 Durante la registrazione l'icona nella barra mostra il pallino e il tempo trascorso.
 
+## Account NotebookLM dall'app
+
+Ingranaggio → **Impostazioni**, sezione NotebookLM:
+
+- **Accedi con Google… / Rinnova sessione… / Cambia account…**: si apre il browser sul Mac
+  con una sessione pulita (puoi scegliere qualunque account); a login finito la sessione
+  passa al Raspberry via SSH (`gweb notebook login --import -`, file 0600) e la copia sul
+  Mac viene cancellata insieme al profilo del browser usato. La prima volta l'app prepara
+  da sola lo strumento di login (`~/.venvs/notebooklm`, notebooklm-py 0.8.6, circa un
+  minuto; serve Python 3.10+ sul Mac). Se l'account cambia, il notebook predefinito sul
+  Pi viene azzerato.
+- **Verifica ora**: prova di sola lettura su Google.
+- **Scollega**: elimina la sessione dal Raspberry (`gweb notebook logout`); l'account
+  Google non viene toccato.
+
+**Avvisi**: ogni 30 secondi (4 durante registrazioni e caricamenti) l'app legge sul Pi lo
+stato della sessione, senza contattare Google: il Raspberry la rinnova ogni 20 minuti e
+registra l'esito. Se è scaduta o mancante, o se ci sono caricamenti fermi in attesa di
+login, compare un banner arancione nella finestrella con *Accedi con Google…* e arriva una
+notifica di macOS (una sola per volta, quando lo stato peggiora).
+
+Nella sezione **Raspberry** si imposta l'indirizzo (alias di `~/.ssh/config`,
+`utente@host`, indirizzo Tailscale) e si prova la connessione.
+
 ## Come funziona
 
 Nessuna porta di rete e nessun servizio in più sul Pi: l'app esegue via SSH gli stessi
@@ -42,9 +66,10 @@ lo avvia. Per farlo partire a ogni accesso: icona ingranaggio → **Avvia al log
 
 | Campo | Default | Note |
 |---|---|---|
-| Host SSH | `raspberry` | alias di `~/.ssh/config` oppure `utente@indirizzo`; serve l'accesso a chiave |
+| Indirizzo | `raspberry` | alias di `~/.ssh/config` oppure `utente@indirizzo`; serve l'accesso a chiave |
 | Percorso di gweb | `~/.local/bin/gweb` | sul Raspberry |
-| Avvia al login | spento | elemento di login di macOS (Impostazioni di Sistema → Generali → Elementi login) |
+| Account NotebookLM | — | login, rinnovo, cambio account, verifica, scollega (vedi sopra) |
+| Avvia al login del Mac | spento | elemento di login di macOS (Impostazioni di Sistema → Generali → Elementi login) |
 
 ## Problemi
 
@@ -52,7 +77,9 @@ lo avvia. Per farlo partire a ogni accesso: icona ingranaggio → **Avvia al log
 |---|---|
 | "Raspberry non raggiungibile" | `ssh raspberry` dal Terminale deve entrare senza password |
 | "Servizio gweb fermo sul Raspberry" | `ssh raspberry 'systemctl --user start gweb'` |
-| "Serve un nuovo login NotebookLM" | procedura di login nel README principale |
+| Banner "NotebookLM: sessione scaduta" | *Accedi con Google…* nel banner o nelle Impostazioni |
+| "Serve Python 3.10 o successivo sul Mac" | installa Python da python.org, poi riprova il login |
+| "Login non completato" | la finestra del browser è stata chiusa o sono passati 10 minuti: riprova |
 | "Registrazione non riuscita" | `ssh raspberry 'gweb doctor'` (microfono) |
 
 ## Sviluppo

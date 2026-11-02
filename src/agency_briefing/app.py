@@ -11,6 +11,7 @@ import shutil
 import sys
 import tempfile
 import time
+from datetime import timedelta
 from pathlib import Path
 
 from . import __version__
@@ -45,6 +46,9 @@ from .recordings import RecordingStore
 def _looks_like_full_id(value: str) -> bool:
     return len(value) >= 30 or value.startswith("nb-")
 
+
+# Il salvataggio dei cookie ruotati può arrivare un attimo dopo la fine del controllo.
+SESSION_CHECK_SLACK = timedelta(seconds=10)
 
 class AgencyApp:
     def __init__(self, cfg: Config | None = None):
@@ -199,23 +203,76 @@ class AgencyApp:
             result["cookies"] = len(parsed["cookies"])
         return result
 
+    def session_summary(self, local: dict | None = None) -> dict:
+        """Stato della sessione senza rete, dall'ultimo controllo noto (keepalive del demone
+        o verifica esplicita) successivo all'ultimo import. Usato dall'app Mac per avvisare.
+
+        ``state``: ``ok`` | ``expired`` (Google ha rifiutato la sessione) | ``missing`` |
+        ``error`` (ultimo controllo fallito per altri motivi, es. rete) | ``unchecked``.
+        """
+        local = local or self.auth_local()
+        checks = [c for c in (self.db.get_setting("notebooklm.keepalive"),
+                              self.db.get_setting("notebooklm.last_check")) if c and c.get("at")]
+        latest = max(checks, key=lambda c: parse_iso(c["at"]), default=None)
+        saved = parse_iso(local.get("modified_at"))
+        blocked = self.db.one("SELECT COUNT(*) AS n FROM jobs WHERE state=?",
+                              (JobState.BLOCKED_AUTH,))["n"]
+        if not local["exists"]:
+            state = "missing"
+        elif latest is None or (saved and parse_iso(latest["at"]) < saved - SESSION_CHECK_SLACK):
+            state = "unchecked"
+        elif latest["ok"]:
+            state = "ok"
+        else:
+            state = "expired" if latest.get("error") == AuthRequired.code else "error"
+        return {"state": state, "account": self.db.get_setting("notebooklm.account"),
+                "checked_at": latest["at"] if latest else None,
+                "error": latest.get("error") if latest else None,
+                "blocked_jobs": blocked}
+
     def notebook_status(self, *, remote: bool = True) -> dict:
         local = self.auth_local()
         out = {"backend": self.backend.name, "local": local, "remote": None,
                "keepalive": self.db.get_setting("notebooklm.keepalive"),
                "default_notebook": self.db.get_setting("notebook.default")}
-        if not remote:
-            return out
-        if not local["exists"]:
-            raise AuthRequired("Nessuna sessione NotebookLM su questo dispositivo",
-                               details=out)
+        if remote:
+            if not local["exists"]:
+                raise AuthRequired("Nessuna sessione NotebookLM su questo dispositivo",
+                                   details=out | {"session": self.session_summary(local)})
 
-        async def check(s):
-            nbs = await s.list_notebooks()  # sola lettura
-            return {"ok": True, "notebooks": len(nbs), "account": await s.account_email()}
+            async def check(s):
+                nbs = await s.list_notebooks()  # sola lettura
+                return {"ok": True, "notebooks": len(nbs), "account": await s.account_email()}
 
-        out["remote"] = self.backend.run(check)
+            try:
+                out["remote"] = self.backend.run(check)
+            except AgencyError as exc:
+                self.db.set_setting("notebooklm.last_check",
+                                    {"at": iso(), "ok": False, "error": exc.code})
+                raise
+            self.db.set_setting("notebooklm.last_check", {"at": iso(), "ok": True, "error": None})
+            account = out["remote"].get("account")
+            previous = self.db.get_setting("notebooklm.account")
+            if account and previous and account != previous:
+                # Il notebook predefinito apparteneva all'altro account.
+                self.db.delete_setting("notebook.default")
+                out["default_notebook"] = None
+                out["remote"]["account_changed"] = True
+            if account:
+                self.db.set_setting("notebooklm.account", account)
+        out["session"] = self.session_summary(local)
         return out
+
+    def notebook_logout(self) -> dict:
+        """Elimina la sessione salvata su questo dispositivo (non tocca l'account Google)."""
+        removed = []
+        for p in (self.cfg.storage_state_path, self.cfg.master_token_path):
+            if p.exists():
+                p.unlink()
+                removed.append(str(p))
+        self.db.delete_setting("notebooklm.account")
+        self.db.delete_setting("notebook.default")
+        return {"removed": removed, "session": self.session_summary()}
 
     def notebook_list(self) -> list[dict]:
         async def fn(s):

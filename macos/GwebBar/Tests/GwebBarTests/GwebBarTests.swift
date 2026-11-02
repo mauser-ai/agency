@@ -71,4 +71,45 @@ final class GwebBarTests: XCTestCase {
         XCTAssertEqual(Format.duration(3725), "1:02:05")
         XCTAssertEqual(Format.duration(nil), "0:00")
     }
+
+    // Output reale di `gweb notebook status --offline --json` sul Raspberry (ridotto).
+    func testDecodeSessionSummary() throws {
+        let json = """
+        {"backend": "notebooklm-py", "local": {"exists": true}, "remote": null,
+         "keepalive": {"at": "2026-11-02T18:51:46.420715Z", "ok": true, "error": null},
+         "default_notebook": null,
+         "session": {"state": "ok", "account": "sacchetto.riccardo@gmail.com",
+                     "checked_at": "2026-11-02T18:51:46.420715Z", "error": null, "blocked_jobs": 0}}
+        """
+        let s = try JSONDecoder().decode(NotebookStatus.self, from: Data(json.utf8)).session
+        XCTAssertEqual(s.account, "sacchetto.riccardo@gmail.com")
+        XCTAssertFalse(s.needsLogin)
+        XCTAssertNotNil(Format.localTime(s.checkedAt!))
+        for (state, blocked, needs) in [("expired", 0, true), ("missing", 0, true), ("error", 0, false),
+                                        ("unchecked", 0, false), ("ok", 2, true)] {
+            let x = try JSONDecoder().decode(SessionSummary.self, from: Data(
+                #"{"state": "\#(state)", "account": null, "checked_at": null, "error": null, "blocked_jobs": \#(blocked)}"#.utf8))
+            XCTAssertEqual(x.needsLogin, needs, state)
+        }
+    }
+
+    func testDecodeImportResultEvenWhenRejected() throws {
+        let ok = #"{"storage_state": {"saved_to": "/x", "mode": "0600", "cookies": 40}, "status": {"ok": true, "notebooks": 15, "account": "a@b.c", "account_changed": true}}"#
+        let r = try JSONDecoder().decode(ImportResult.self, from: Data(ok.utf8)).status!
+        XCTAssertTrue(r.ok && r.accountChanged == true)
+        let ko = #"{"storage_state": {"saved_to": "/x", "mode": "0600"}, "status": {"ok": false, "code": "AUTH_REQUIRED", "message": "Sessione non valida", "hint": null}}"#
+        XCTAssertFalse(try JSONDecoder().decode(ImportResult.self, from: Data(ko.utf8)).status!.ok)
+    }
+
+    @MainActor
+    func testSessionNotificationOnlyOnTransition() throws {
+        let m = AppModel(autoStart: false)
+        let ok = try JSONDecoder().decode(SessionSummary.self, from: Data(#"{"state": "ok", "blocked_jobs": 0}"#.utf8))
+        let expired = try JSONDecoder().decode(SessionSummary.self, from: Data(#"{"state": "expired", "blocked_jobs": 0}"#.utf8))
+        m.updateSession(ok)
+        m.updateSession(expired)
+        XCTAssertEqual(m.session?.state, "expired")
+        m.updateSession(expired)  // nessun nuovo avviso: lo stato non è cambiato
+        XCTAssertTrue(m.session!.needsLogin)
+    }
 }

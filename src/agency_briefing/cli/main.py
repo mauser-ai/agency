@@ -334,6 +334,18 @@ def notebook_login(import_src, token_src, browser, remove_source):
          lambda d: click.echo(d["instructions"]))
 
 
+@notebook.command("logout")
+@json_option
+def notebook_logout():
+    """Elimina la sessione NotebookLM salvata sul Raspberry (per cambiare account).
+
+    L'account Google non viene toccato. Gli upload restano in coda in attesa di login.
+    """
+    data = c().app.notebook_logout()
+    emit(data, lambda d: out.ok("Sessione eliminata" if d["removed"]
+                                else "Nessuna sessione da eliminare"))
+
+
 @notebook.command("status")
 @click.option("--offline", is_flag=True, help="Solo controlli locali, nessuna rete.")
 @json_option
@@ -356,6 +368,12 @@ def notebook_status(offline):
         if d["remote"]:
             out.ok(f"Sessione valida: {d['remote']['notebooks']} notebook accessibili"
                    + (f" ({d['remote']['account']})" if d["remote"].get("account") else ""))
+        else:
+            s = d["session"]
+            label = {"ok": "valida all'ultimo controllo", "expired": "SCADUTA: rifai il login",
+                     "missing": "assente", "error": "ultimo controllo fallito",
+                     "unchecked": "non ancora verificata"}[s["state"]]
+            click.echo(f"sessione: {label}" + (f" ({s['account']})" if s["account"] else ""))
 
     emit(data, human)
 

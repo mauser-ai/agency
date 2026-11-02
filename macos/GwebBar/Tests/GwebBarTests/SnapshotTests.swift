@@ -31,14 +31,17 @@ final class SnapshotTests: XCTestCase {
     }
 
     private func render(_ m: AppModel, _ name: String) throws {
+        try render(PopoverView(model: m), name)
+    }
+
+    private func render<V: View>(_ view: V, _ name: String) throws {
         for (suffix, look) in [("light", NSAppearance.Name.aqua), ("dark", .darkAqua)] {
-            try render(m, "\(name)-\(suffix)", appearance: NSAppearance(named: look)!)
+            try render(view, "\(name)-\(suffix)", appearance: NSAppearance(named: look)!)
         }
     }
 
-    private func render(_ m: AppModel, _ name: String, appearance: NSAppearance) throws {
-        let host = NSHostingView(rootView: PopoverView(model: m)
-            .background(Color(nsColor: .windowBackgroundColor)))
+    private func render<V: View>(_ view: V, _ name: String, appearance: NSAppearance) throws {
+        let host = NSHostingView(rootView: view.background(Color(nsColor: .windowBackgroundColor)))
         host.appearance = appearance
         host.frame = NSRect(origin: .zero, size: host.fittingSize)
         let window = NSWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
@@ -56,4 +59,19 @@ final class SnapshotTests: XCTestCase {
     func testIdle() throws { try render(model(.idle), "1-idle") }
     func testRecording() throws { try render(model(.recording(rec("recording"))), "2-recording") }
     func testChoosing() throws { try render(model(.choosing(rec("finalizing"))), "3-choosing") }
+
+    func testSessionExpiredBanner() throws {
+        let m = model(.idle)
+        m.session = try JSONDecoder().decode(SessionSummary.self, from: Data(
+            #"{"state": "expired", "account": "sacchetto.riccardo@gmail.com", "blocked_jobs": 1}"#.utf8))
+        try render(m, "4-session-expired")
+    }
+
+    func testSettings() throws {
+        let m = model(.idle)
+        m.session = try JSONDecoder().decode(SessionSummary.self, from: Data(
+            #"{"state": "ok", "account": "sacchetto.riccardo@gmail.com", "checked_at": "2026-11-02T18:51:46.42Z", "blocked_jobs": 0}"#.utf8))
+        m.connectionTest = "✓ Raspberry raggiungibile, servizio gweb attivo"
+        try render(SettingsView(model: m), "5-settings")
+    }
 }

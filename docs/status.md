@@ -29,7 +29,7 @@ SD 115 GB (87 GB liberi). Utente `riccardo` (non `pi`), host `DartsVision`, ragg
   ancora. Nota: il primo tentativo di login ha salvato una sessione non collegata
   ("authuser=0 did not return a signed-in account"): `notebooklm list` sul Mac lo rivela
   prima dell'import (aggiunto al README).
-- `pytest` sul Pi: 48 test passati in ~55 s; `ruff` pulito.
+- `pytest` sul Pi: 49 test passati in ~55 s; `ruff` pulito.
 - **Microfono: HAT I2S Keyestudio 2-Mic Pi HAT V1.0** (clone del ReSpeaker 2-Mic v1.0,
   codec WM8960 a 0x1a su i2c-1, `dtoverlay=wm8960-soundcard` in
   `/boot/firmware/config.txt`; nessun microfono USB). Scheda ALSA `wm8960soundcard`,
@@ -58,6 +58,19 @@ SD 115 GB (87 GB liberi). Utente `riccardo` (non `pi`), host `DartsVision`, ragg
   **Non verificato**: upload reale su NotebookLM avviato dall'app (vietato senza richiesta
   esplicita), clic nella finestrella vera (lo strumento di controllo del computer non
   vede le app solo-barra-dei-menu).
+- **Account NotebookLM dall'app Mac** (2026-11-02): login/rinnovo/cambio account con
+  browser sul Mac (`notebooklm -p gwebbar login --fresh --storage <tmp>`, tutto cancellato
+  dopo l'import), import via stdin SSH, `gweb notebook logout`, stato della sessione
+  offline (`session` in `notebook status`: ok/expired/missing/error/unchecked, account,
+  caricamenti in attesa) con banner e notifica macOS al peggioramento; indirizzo del Pi e
+  prova di connessione nelle Impostazioni (finestra separata). Corretto: il keepalive
+  registrava l'ora prima di riscrivere i cookie, quindi la sessione risultava sempre "non
+  verificata". Verificato sul Pi reale: stato `ok` con l'account dopo il keepalive, import
+  non valido rifiutato senza toccare la sessione, logout su istanza isolata (`missing`);
+  sul Mac: comando di login accettato dalla libreria (Chrome avviato, timeout), profilo
+  `default` intatto; 14 test Swift (anche rendering di banner e impostazioni).
+  **Non verificato**: un login Google completo avviato dall'app (richiede l'utente nel
+  browser) e la notifica reale a sessione scaduta.
 - Rimosso dal Pi un kiosk preesistente (Chromium a schermo intero al login, progetto
   "7 Campanili") che bloccava il desktop: non riguarda gweb, nessun impatto sul servizio.
 
@@ -86,7 +99,7 @@ Correzioni emerse sul Pi:
   più forti e `anlmdn` (più lento, meno efficace). Approvato all'ascolto dall'utente
   (2026-11-02) rispetto alle varianti leggera e forte; `""` disattiva il filtro. Test: `test_encode_applies_audio_filter`.
 
-## Completato e verificato (test automatici: `pytest`, 48 test, ~25 s x86 / ~55 s Pi 4)
+## Completato e verificato (test automatici: `pytest`, 49 test, ~25 s x86 / ~55 s Pi 4)
 - Configurazione TOML con default, validazione di chiavi e tipi, `config init/show/path`.
 - Scoperta microfono da `/proc/asound` (finto) per **ID scheda**, `auto` = primo USB,
   errore operativo se assente.

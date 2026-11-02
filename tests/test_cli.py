@@ -118,3 +118,29 @@ def test_credentials_import_permissions_and_no_echo(cfg_path, tmp_path):
     assert code == 2
     code, outp, _ = run("notebook", "login")
     assert code == 0 and "notebook login --import -" in outp
+
+
+def test_session_summary_states_and_logout(cfg_path):
+    from agency_briefing.app import AgencyApp
+    from agency_briefing.config import load_config
+
+    code, outp, _ = run("notebook", "status", "--json")
+    d = json.loads(outp)
+    assert code == 0 and d["session"]["state"] == "ok"
+    app = AgencyApp(load_config(cfg_path))
+    # Il demone segnala che Google ha rifiutato la sessione.
+    app.db.set_setting("notebooklm.keepalive",
+                       {"at": "2999-01-01T00:00:00Z", "ok": False, "error": "AUTH_REQUIRED"})
+    code, outp, _ = run("notebook", "status", "--offline", "--json")
+    assert code == 0 and json.loads(outp)["session"]["state"] == "expired"
+    # Cambio account: il notebook predefinito del vecchio account viene azzerato.
+    app.db.set_setting("notebooklm.account", "vecchio@example.com")
+    app.db.set_setting("notebook.default", {"id": "nb-x", "title": "x"})
+    app.db.delete_setting("notebooklm.keepalive")
+    app.db.set_setting("notebooklm.last_check", {"at": "2000-01-01T00:00:00Z", "ok": True})
+    st = app.notebook_status(remote=True)
+    if st["remote"].get("account"):
+        assert st["remote"]["account_changed"] and st["default_notebook"] is None
+    assert st["session"]["state"] == "ok"
+    code, outp, _ = run("notebook", "logout", "--json")
+    assert code == 0 and "session" in json.loads(outp)

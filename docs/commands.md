@@ -51,7 +51,8 @@ su stdout, con lo stesso codice di uscita.
 | `gweb notebook login --import FILE\|-` | Importa `storage_state.json` (stdin con `-`), lo valida, lo scrive 0600 atomicamente, sblocca i lavori `blocked_auth`, prova una lettura remota. Exit 5 se la sessione non è valida. `--remove-source` elimina il file sorgente. | T (import/permessi), R (validità) |
 | `gweb notebook login --import-master-token FILE\|-` | Opzionale: master token per re-mint automatico (richiede `pip install -e ".[headless]"`). | R |
 | `gweb notebook login --browser` | Login diretto (solo su macchine con display e Playwright). | — |
-| `gweb notebook status [--offline] [--json]` | File sessione, permessi, data, master token, ultimo keepalive; senza `--offline` elenca i notebook (sola lettura). | T (assenza sessione → 5), R |
+| `gweb notebook status [--offline] [--json]` | File sessione, permessi, data, master token, ultimo keepalive; senza `--offline` elenca i notebook (sola lettura). Campo `session`: `state` (`ok`, `expired`, `missing`, `error`, `unchecked`, dall'ultimo controllo successivo all'ultimo import, anche offline), `account`, `checked_at`, `blocked_jobs`. Se l'account cambia, il notebook predefinito viene azzerato. | T, R |
+| `gweb notebook logout [--json]` | Elimina la sessione salvata sul Raspberry (non l'account Google); usato per cambiare account. | T |
 | `gweb notebook list [--json]` | Notebook dell'account; `*` = predefinito. | T (fake), R |
 | `gweb notebook select [ID\|prefisso\|titolo]` | Notebook predefinito persistente; senza argomento scelta numerata interattiva (exit 2 se non interattivo). | T (fake), R |
 | `gweb notebook create TITOLO [--select] [--json]` | Crea un notebook vuoto (scrittura: invio unico, nessun ritentativo automatico); `--select` lo rende predefinito. Usato dall'app Mac. | T (fake), R |

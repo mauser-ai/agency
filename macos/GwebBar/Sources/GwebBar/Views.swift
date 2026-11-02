@@ -2,12 +2,13 @@ import SwiftUI
 
 struct PopoverView: View {
     @ObservedObject var model: AppModel
-    @State private var showSettings = false
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             header
             if let err = model.error { ErrorBanner(failure: err) { model.error = nil } }
+            SessionBanner(model: model)
             if let notice = model.notice {
                 Label(notice, systemImage: "checkmark.circle.fill")
                     .foregroundStyle(.green)
@@ -26,7 +27,6 @@ struct PopoverView: View {
         }
         .padding(14)
         .frame(width: 340)
-        .sheet(isPresented: $showSettings) { SettingsView(model: model) }
     }
 
     private var header: some View {
@@ -52,7 +52,10 @@ struct PopoverView: View {
                  : model.reachable == false ? "Raspberry non raggiungibile" : "Connessione…")
                 .font(.caption).foregroundStyle(.secondary)
             Spacer()
-            Button { showSettings = true } label: { Image(systemName: "gearshape") }
+            Button {
+                openWindow(id: SettingsView.windowID)
+                NSApp.activate(ignoringOtherApps: true)
+            } label: { Image(systemName: "gearshape") }
                 .buttonStyle(.borderless).help("Impostazioni")
             Button { NSApp.terminate(nil) } label: { Image(systemName: "power") }
                 .buttonStyle(.borderless).help("Esci")
@@ -247,28 +250,125 @@ struct ErrorBanner: View {
     }
 }
 
-struct SettingsView: View {
+/// Login in corso o sessione da rifare: visibile subito aprendo la finestrella.
+struct SessionBanner: View {
     @ObservedObject var model: AppModel
-    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        if let progress = model.loginProgress {
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text(progress).font(.callout)
+            }
+            .padding(8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.blue.opacity(0.10), in: RoundedRectangle(cornerRadius: 8))
+        } else if let s = model.session, s.needsLogin {
+            VStack(alignment: .leading, spacing: 6) {
+                Label("NotebookLM: \(s.label.lowercased())", systemImage: "person.crop.circle.badge.exclamationmark")
+                    .font(.callout.weight(.semibold))
+                if let n = s.blockedJobs, n > 0 {
+                    Text("\(n) caricament\(n == 1 ? "o" : "i") in attesa del login.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Button("Accedi con Google…") { model.loginNotebookLM() }
+                    .buttonStyle(PrimaryButtonStyle(color: .orange, fullWidth: false))
+            }
+            .padding(8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+        }
+    }
+}
+
+struct SettingsView: View {
+    static let windowID = "settings"
+    @ObservedObject var model: AppModel
+    @State private var hostDraft = ""
+    @State private var pathDraft = ""
 
     var body: some View {
         Form {
-            TextField("Host SSH", text: $model.host)
-            TextField("Percorso di gweb sul Raspberry", text: $model.gwebPath)
-            Toggle("Avvia al login", isOn: Binding(get: { model.launchAtLogin },
-                                                   set: { model.launchAtLogin = $0 }))
-            Text("L'host è un alias di ~/.ssh/config (o utente@indirizzo) con accesso a chiave.")
-                .font(.caption).foregroundStyle(.secondary)
-            HStack {
-                Spacer()
-                Button("Fatto") {
-                    dismiss()
-                    Task { await model.refresh() }
+            Section("Raspberry") {
+                TextField("Indirizzo (alias SSH o utente@host)", text: $hostDraft)
+                TextField("Percorso di gweb", text: $pathDraft)
+                HStack {
+                    Button("Salva e prova la connessione") {
+                        model.host = hostDraft.trimmingCharacters(in: .whitespaces)
+                        model.gwebPath = pathDraft.trimmingCharacters(in: .whitespaces)
+                        model.testConnection()
+                    }
+                    .disabled(hostDraft.trimmingCharacters(in: .whitespaces).isEmpty)
+                    if let t = model.connectionTest {
+                        Text(t).font(.caption)
+                            .foregroundStyle(t.hasPrefix("✓") ? .green : t.hasPrefix("✗") ? .red : .secondary)
+                            .lineLimit(2)
+                    }
                 }
-                .keyboardShortcut(.defaultAction)
+                Text(verbatim: "Es. \"raspberry\" (da ~/.ssh/config), \"riccardo@dartsvision.local\" o l'indirizzo Tailscale. Serve l'accesso SSH a chiave, senza password.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
+            Section("NotebookLM") {
+                LabeledContent("Account") {
+                    Text(model.session?.account ?? "—").textSelection(.enabled)
+                }
+                LabeledContent("Stato") {
+                    HStack(spacing: 6) {
+                        Circle().fill(color).frame(width: 8, height: 8)
+                        Text(model.session?.label ?? "Sconosciuto")
+                    }
+                }
+                if let checked = model.session?.checkedAt.flatMap(Format.localTime) {
+                    LabeledContent("Ultimo controllo", value: checked)
+                }
+                if let progress = model.loginProgress {
+                    HStack { ProgressView().controlSize(.small); Text(progress) }
+                }
+                HStack {
+                    Button(model.session?.state == "missing" ? "Accedi con Google…" : "Rinnova sessione…") {
+                        model.loginNotebookLM()
+                    }
+                    Button("Cambia account…") { model.loginNotebookLM() }
+                        .disabled(model.session?.state == "missing")
+                    Spacer()
+                    Button("Verifica ora") { model.checkSessionNow() }
+                    Button("Scollega", role: .destructive) { model.logoutNotebookLM() }
+                        .disabled(model.session?.state == "missing")
+                }
+                .disabled(model.loginProgress != nil || model.busy != nil)
+                Text("Il login si fa qui sul Mac (si apre il browser, scegli l'account Google); la sessione passa al Raspberry via SSH e la copia sul Mac viene cancellata. Il Raspberry la rinnova da solo; se scade ricevi una notifica.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+
+            Section("Generale") {
+                Toggle("Avvia al login del Mac", isOn: Binding(get: { model.launchAtLogin },
+                                                               set: { model.launchAtLogin = $0 }))
+            }
+
+            if let err = model.error {
+                ErrorBanner(failure: err) { model.error = nil }
+            } else if let notice = model.notice {
+                Label(notice, systemImage: "checkmark.circle.fill").foregroundStyle(.green)
             }
         }
-        .padding()
-        .frame(width: 360)
+        .formStyle(.grouped)
+        .frame(width: 520)
+        .fixedSize(horizontal: false, vertical: true)
+        .onAppear {
+            hostDraft = model.host
+            pathDraft = model.gwebPath
+            model.connectionTest = nil
+            Task { await model.refresh() }
+        }
+    }
+
+    private var color: Color {
+        switch model.session?.state {
+        case "ok": return .green
+        case "expired", "missing": return .red
+        case "error": return .orange
+        default: return .gray
+        }
     }
 }

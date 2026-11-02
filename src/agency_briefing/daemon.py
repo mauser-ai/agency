@@ -102,6 +102,9 @@ class Daemon:
             status["error"] = exc.code
         except Exception as exc:  # noqa: BLE001
             status["error"] = type(exc).__name__
+        # Ora di fine: il keepalive riscrive i cookie ruotati, e session_summary confronta
+        # questo istante con la data del file per capire se il controllo è ancora attuale.
+        status["at"] = iso()
         self.db.set_setting("notebooklm.keepalive", status)
 
     def _uploader_loop(self) -> None:

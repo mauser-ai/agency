@@ -176,6 +176,10 @@ Sul Pi, verifica di sola lettura:
 gweb notebook status
 ```
 
+Più semplice: dall'app per il Mac (Impostazioni → NotebookLM → *Accedi con Google…*) gli
+stessi passaggi sono automatici, compreso il cambio di account; l'app avvisa anche quando la
+sessione scade.
+
 **Sessione scaduta**: `notebook status` esce con codice 5 e i caricamenti passano a
 "attende login" senza consumare tentativi. Ripeti login e import dal Mac: la coda riparte
 da sola appena il file cambia. Il servizio rinnova i cookie ogni 20 minuti (come

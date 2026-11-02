@@ -22,6 +22,10 @@ final class AppModel: ObservableObject {
     @Published var recent: [Recording] = []
     @Published var reachable: Bool?
     @Published var daemonAlive = true
+    @Published var session: SessionSummary?
+    /// Avanzamento del login NotebookLM (nil = nessun login in corso).
+    @Published var loginProgress: String?
+    @Published var connectionTest: String?
 
     @AppStorage("host") var host = "raspberry"
     @AppStorage("gwebPath") var gwebPath = "~/.local/bin/gweb"
@@ -36,7 +40,10 @@ final class AppModel: ObservableObject {
     }
 
     init(autoStart: Bool = true) {
-        if autoStart { startPolling() }
+        if autoStart {
+            Notifier.requestAuthorization()
+            startPolling()
+        }
     }
 
     // MARK: stato
@@ -77,6 +84,7 @@ final class AppModel: ObservableObject {
                 }
             }
             recent = (try? await remote.recent()) ?? recent
+            if loginProgress == nil, let s = try? await remote.session(online: false) { updateSession(s) }
             if error?.isUnreachable == true { error = nil }
         } catch let f as RemoteGweb.Failure {
             reachable = !f.isUnreachable
@@ -168,6 +176,87 @@ final class AppModel: ObservableObject {
                 error = f
             } catch {
                 self.error = RemoteGweb.Failure(message: error.localizedDescription, hint: nil, exitCode: -1)
+            }
+        }
+    }
+
+    // MARK: sessione NotebookLM
+
+    /// Aggiorna lo stato e avvisa (notifica di sistema) solo quando passa da buono a da rifare.
+    func updateSession(_ s: SessionSummary) {
+        let was = session
+        session = s
+        if s.needsLogin && !(was?.needsLogin ?? false) {
+            Notifier.post(title: "NotebookLM: serve un nuovo login",
+                          body: s.state == "missing" ? "Nessun account collegato al Raspberry."
+                              : "La sessione è scaduta: le registrazioni restano in coda finché non accedi di nuovo.")
+        }
+    }
+
+    func checkSessionNow() {
+        perform("Verifico la sessione…") { [self] in
+            updateSession(try await remote.session(online: true))
+        }
+    }
+
+    /// Login (anche per rinnovare la sessione o cambiare account): browser sul Mac → Raspberry.
+    func loginNotebookLM() {
+        guard loginProgress == nil else { return }
+        loginProgress = "Preparazione…"
+        error = nil
+        notice = nil
+        Task {
+            defer { loginProgress = nil }
+            do {
+                let data = try await NotebookLogin.login { [weak self] in self?.loginProgress = $0 }
+                loginProgress = "Invio la sessione al Raspberry…"
+                let check = try await remote.importSession(data)
+                guard check.ok else {
+                    error = RemoteGweb.Failure(message: "Google non ha accettato la sessione",
+                                               hint: check.message ?? "Riprova il login.", exitCode: 5)
+                    return
+                }
+                notice = "Collegato a NotebookLM come \(check.account ?? "account Google")"
+                    + (check.accountChanged == true ? " (account cambiato)" : "")
+                notebooks = []
+                Notifier.post(title: "NotebookLM collegato", body: check.account ?? "Sessione attiva")
+                if let s = try? await remote.session(online: false) { updateSession(s) }
+            } catch let f as NotebookLogin.Failure {
+                error = RemoteGweb.Failure(message: f.message, hint: f.hint, exitCode: -1)
+            } catch let f as RemoteGweb.Failure {
+                error = f
+            } catch {
+                self.error = RemoteGweb.Failure(message: error.localizedDescription, hint: nil, exitCode: -1)
+            }
+        }
+    }
+
+    func logoutNotebookLM() {
+        perform("Scollego l'account…") { [self] in
+            try await remote.logout()
+            notebooks = []
+            if let s = try? await remote.session(online: false) { session = s }
+            notice = "Account scollegato dal Raspberry."
+        }
+    }
+
+    // MARK: connessione
+
+    func testConnection() {
+        connectionTest = "Provo \(host)…"
+        Task {
+            do {
+                let st = try await remote.status()
+                reachable = true
+                daemonAlive = st.daemon?.alive ?? true
+                connectionTest = daemonAlive ? "✓ Raspberry raggiungibile, servizio gweb attivo"
+                    : "Raspberry raggiungibile, ma il servizio gweb è fermo"
+                await refresh()
+            } catch let f as RemoteGweb.Failure {
+                reachable = !f.isUnreachable
+                connectionTest = "✗ \(f.message)" + (f.hint.map { ": \($0)" } ?? "")
+            } catch {
+                connectionTest = "✗ \(error.localizedDescription)"
             }
         }
     }

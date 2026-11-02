@@ -28,12 +28,20 @@ struct RemoteGweb {
         ([gwebPath] + args.map(Self.shellQuote) + ["--json"]).joined(separator: " ")
     }
 
-    func run<T: Decodable>(_ args: [String], as type: T.Type, timeout: TimeInterval = 60) async throws -> T {
-        let (code, out, err) = try await Self.exec(
+    func ssh(_ args: [String], stdin: Data? = nil, timeout: TimeInterval) async throws -> (Int32, Data, Data) {
+        try await Self.exec(
             "/usr/bin/ssh",
             ["-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "ServerAliveInterval=15",
              host, remoteCommand(args)],
-            timeout: timeout)
+            stdin: stdin, timeout: timeout)
+    }
+
+    func run<T: Decodable>(_ args: [String], as type: T.Type, timeout: TimeInterval = 60) async throws -> T {
+        let (code, out, err) = try await ssh(args, timeout: timeout)
+        return try Self.decode(code: code, out: out, err: err, host: host, as: T.self)
+    }
+
+    static func decode<T: Decodable>(code: Int32, out: Data, err: Data, host: String, as: T.Type) throws -> T {
         if code == 0 {
             do {
                 return try JSONDecoder().decode(T.self, from: out)
@@ -54,21 +62,32 @@ struct RemoteGweb {
                       hint: stderr.isEmpty ? nil : String(stderr.suffix(300)), exitCode: code)
     }
 
-    static func exec(_ path: String, _ args: [String], timeout: TimeInterval) async throws -> (Int32, Data, Data) {
+    static func exec(_ path: String, _ args: [String], stdin: Data? = nil, environment: [String: String]? = nil,
+                     timeout: TimeInterval) async throws -> (Int32, Data, Data) {
         try await withCheckedThrowingContinuation { cont in
             DispatchQueue.global(qos: .userInitiated).async {
                 let p = Process()
                 p.executableURL = URL(fileURLWithPath: path)
                 p.arguments = args
+                if let environment { p.environment = environment }
                 let out = Pipe(), err = Pipe()
                 p.standardOutput = out
                 p.standardError = err
-                p.standardInput = FileHandle.nullDevice
+                let input = stdin.map { _ in Pipe() }
+                p.standardInput = input ?? FileHandle.nullDevice
                 do {
                     try p.run()
                 } catch {
-                    cont.resume(throwing: Failure(message: "ssh non avviabile", hint: error.localizedDescription, exitCode: -1))
+                    cont.resume(throwing: Failure(message: "\((path as NSString).lastPathComponent) non avviabile",
+                                                  hint: error.localizedDescription, exitCode: -1))
                     return
+                }
+                if let input, let stdin {
+                    // Scrittura in un thread a parte: un file grande riempirebbe la pipe.
+                    DispatchQueue.global().async {
+                        input.fileHandleForWriting.write(stdin)
+                        try? input.fileHandleForWriting.close()
+                    }
                 }
                 let killer = DispatchWorkItem { if p.isRunning { p.terminate() } }
                 DispatchQueue.global().asyncAfter(deadline: .now() + timeout, execute: killer)
@@ -112,5 +131,31 @@ struct RemoteGweb {
 
     func recent(limit: Int = 5) async throws -> [Recording] {
         try await run(["recordings", "list", "--limit", String(limit)], as: [Recording].self, timeout: 20)
+    }
+
+    /// `online` interroga Google (sola lettura); offline usa l'ultimo controllo del demone.
+    func session(online: Bool) async throws -> SessionSummary {
+        do {
+            return try await run(["notebook", "status"] + (online ? [] : ["--offline"]),
+                                 as: NotebookStatus.self, timeout: online ? 60 : 20).session
+        } catch let f as Failure where online && f.needsLogin {
+            // Il controllo fallito è stato registrato sul Pi: il riepilogo offline lo riflette.
+            return try await session(online: false)
+        }
+    }
+
+    /// Passa la sessione al Pi su stdin (mai su disco lì se non nel file 0600 finale).
+    func importSession(_ storageState: Data) async throws -> ImportResult.Check {
+        let (code, out, err) = try await ssh(["notebook", "login", "--import", "-"], stdin: storageState, timeout: 90)
+        if code == 0 || code == 5, let res = try? JSONDecoder().decode(ImportResult.self, from: out),
+           let status = res.status {
+            return status
+        }
+        return try Self.decode(code: code, out: out, err: err, host: host, as: ImportResult.Check.self)
+    }
+
+    func logout() async throws {
+        struct Ok: Decodable {}
+        _ = try await run(["notebook", "logout"], as: Ok.self, timeout: 20)
     }
 }

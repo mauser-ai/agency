@@ -11,6 +11,13 @@ struct GwebBarApp: App {
             MenuBarLabel(model: model)
         }
         .menuBarExtraStyle(.window)
+
+        // Finestra vera (non un foglio nella finestrella): resta aperta mentre il browser del
+        // login prende il primo piano.
+        Window("Impostazioni Briefing", id: SettingsView.windowID) {
+            SettingsView(model: model)
+        }
+        .windowResizability(.contentSize)
     }
 }
 

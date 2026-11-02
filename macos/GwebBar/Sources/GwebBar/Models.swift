@@ -97,6 +97,55 @@ struct UploadResult: Decodable {
     let warnings: [String]?
 }
 
+/// `session` di `gweb notebook status [--offline] --json`: stato dall'ultimo controllo noto.
+struct SessionSummary: Decodable, Equatable {
+    let state: String          // ok | expired | missing | error | unchecked
+    let account: String?
+    let checkedAt: String?
+    let error: String?
+    let blockedJobs: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case state, account, error
+        case checkedAt = "checked_at"
+        case blockedJobs = "blocked_jobs"
+    }
+
+    /// Serve un nuovo login (avviso all'utente).
+    var needsLogin: Bool { state == "expired" || state == "missing" || (blockedJobs ?? 0) > 0 }
+
+    var label: String {
+        switch state {
+        case "ok": return "Sessione attiva"
+        case "expired": return "Sessione scaduta"
+        case "missing": return "Nessun account collegato"
+        case "error": return "Ultimo controllo non riuscito (rete?)"
+        default: return "Sessione non ancora verificata"
+        }
+    }
+}
+
+struct NotebookStatus: Decodable {
+    let session: SessionSummary
+}
+
+/// Output di `gweb notebook login --import - --json` (anche con exit 5, sessione non valida).
+struct ImportResult: Decodable {
+    struct Check: Decodable {
+        let ok: Bool
+        let account: String?
+        let notebooks: Int?
+        let message: String?
+        let accountChanged: Bool?
+
+        enum CodingKeys: String, CodingKey {
+            case ok, account, notebooks, message
+            case accountChanged = "account_changed"
+        }
+    }
+    let status: Check?
+}
+
 struct RemoteErrorBody: Decodable {
     struct Inner: Decodable {
         let code: String?
@@ -112,6 +161,17 @@ enum Format {
         let s = max(0, Int(seconds ?? 0))
         let h = s / 3600, m = (s % 3600) / 60, sec = s % 60
         return h > 0 ? String(format: "%d:%02d:%02d", h, m, sec) : String(format: "%d:%02d", m, sec)
+    }
+
+    /// "2026-11-02T18:51:46.42Z" → "2 nov, 19:51" (ora locale).
+    static func localTime(_ iso: String) -> String? {
+        let parser = ISO8601DateFormatter()
+        parser.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        guard let date = parser.date(from: iso) ?? ISO8601DateFormatter().date(from: iso) else { return nil }
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "it_IT")
+        f.dateFormat = "d MMM, HH:mm"
+        return f.string(from: date)
     }
 
     static func defaultTitle(now: Date = Date()) -> String {
