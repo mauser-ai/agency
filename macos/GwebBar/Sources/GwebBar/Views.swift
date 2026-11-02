@@ -306,28 +306,6 @@ struct SettingsView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
 
-            Section("Accesso al Raspberry") {
-                if let key = model.accessKey {
-                    Text(key).font(.caption.monospaced()).textSelection(.enabled).lineLimit(3)
-                    HStack {
-                        Button("Copia codice di accesso") {
-                            NSPasteboard.general.clearContents()
-                            NSPasteboard.general.setString(key, forType: .string)
-                        }
-                        Spacer()
-                    }
-                    Text("Mandalo a chi gestisce il Raspberry: lo autorizza con un comando (vedi Leggimi). Il codice è pubblico, non contiene password.")
-                        .font(.caption).foregroundStyle(.secondary)
-                } else {
-                    HStack {
-                        Button("Crea il mio codice di accesso") { model.createAccessKey() }
-                        Spacer()
-                    }
-                    Text("Serve solo se \"Salva e prova la connessione\" dice che il Raspberry rifiuta l'accesso. Chi usa già una propria chiave SSH non ne ha bisogno.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-            }
-
             Section("NotebookLM") {
                 LabeledContent("Account") {
                     Text(model.session?.account ?? "—").textSelection(.enabled)

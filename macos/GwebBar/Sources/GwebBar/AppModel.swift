@@ -270,16 +270,6 @@ final class AppModel: ObservableObject {
         }
     }
 
-    // MARK: accesso dei colleghi
-
-    @Published var accessKey: String? = TeamAccess.publicKey
-
-    func createAccessKey() {
-        perform("Creo il codice di accesso…") { [self] in
-            accessKey = try await TeamAccess.createKey()
-        }
-    }
-
     // MARK: connessione
 
     func testConnection() {

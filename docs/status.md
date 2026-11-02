@@ -94,6 +94,10 @@ SD 115 GB (87 GB liberi). Utente `riccardo` (non `pi`), host `DartsVision`, ragg
   di prova (poi rimossa): stato consentito; shell, `;`-injection, `service stop` e accesso
   interattivo rifiutati. **Non ancora notarizzato**: `spctl` → "Unnotarized Developer ID";
   serve il profilo `notarytool` dell'utente.
+  Poi, su richiesta dell'utente, niente autorizzazione per persona: chiave SSH condivisa del
+  team inclusa nel pacchetto (da `~/.config/gweb-team/`, mai nel repository), autorizzata con
+  la stessa guardia. Verificato: con la sola chiave del team stato ricevuto, `ls` rifiutato.
+  Notarizzazione lasciata da parte per scelta dell'utente.
 - Rimosso dal Pi un kiosk preesistente (Chromium a schermo intero al login, progetto
   "7 Campanili") che bloccava il desktop: non riguarda gweb, nessun impatto sul servizio.
 

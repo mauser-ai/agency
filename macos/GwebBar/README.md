@@ -85,10 +85,12 @@ xcrun notarytool store-credentials gweb-notary --apple-id TUA_EMAIL_APPLE --team
 
 poi `NOTARY_PROFILE=gweb-notary ./build-app.sh --dmg`.
 
-**Accesso dei colleghi**: l'app crea una chiave dedicata (`~/.ssh/gwebbar_ed25519`) e ne
-mostra la parte pubblica ("codice di accesso"); chi gestisce il Pi la autorizza con
-`scripts/add-team-key.sh`, che la limita ai comandi dell'app tramite
-`scripts/gweb-ssh-guard` (comando forzato SSH + `restrict`).
+**Accesso dei colleghi**: nessuna configurazione. `build-app.sh` include nel pacchetto la
+chiave SSH condivisa `~/.config/gweb-team/team_ed25519` (fuori dal repository; per crearla:
+`ssh-keygen -t ed25519 -N "" -C briefing-team -f ~/.config/gweb-team/team_ed25519` e
+`ssh raspberry '~/agency-briefing/scripts/add-team-key.sh' < ~/.config/gweb-team/team_ed25519.pub`).
+Sul Pi è autorizzata con `restrict` e il comando forzato `scripts/gweb-ssh-guard` (solo i
+comandi gweb dell'app). Il DMG contiene quindi una credenziale: solo per il team.
 
 **Icone**: `Sources/GwebBar/Logo.swift` ridisegna il logo in vettoriale (misurato sul PNG
 originale); `scripts/MakeIcon.swift` produce l'iconset macOS (griglia 1024 con forma

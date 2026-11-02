@@ -15,21 +15,10 @@ Non c'è un'icona nel Dock: Briefing vive in alto a destra, nella barra dei menu
 Se non la vedi (sui Mac con il notch le icone in eccesso vengono nascoste), apri il pannello
 con **⌥⌘B** (Opzione + Comando + B) da qualunque app.
 
-## 2. Collegati al Raspberry (una volta sola)
+## 2. Collegamento
 
-1. Nel pannello, rotella ⚙︎ → **Impostazioni**.
-2. In **Raspberry** l'indirizzo è già `riccardo@dartsvision.local`: premi
-   **Salva e prova la connessione**.
-3. Se risponde "✓ Raspberry raggiungibile" hai finito. Se dice che l'accesso è rifiutato:
-   in **Accesso al Raspberry** premi **Crea il mio codice di accesso**, poi
-   **Copia codice di accesso** e mandalo a Riccardo (Slack, mail: è pubblico, non contiene
-   password). Quando ti conferma, premi di nuovo *Salva e prova la connessione*.
-
-Il codice permette alla tua app di usare solo le funzioni di Briefing sul Raspberry, niente
-altro.
-
-**Fuori dall'ufficio** `dartsvision.local` non si raggiunge: serve Tailscale sul Mac, e al
-posto dell'indirizzo si usa quello Tailscale del Raspberry (chiedilo a Riccardo).
+Nessuna configurazione: in ufficio Briefing si collega da solo al Raspberry. In basso nel
+pannello vedi "Raspberry collegato". Fuori dall'ufficio non si raggiunge (serve Tailscale).
 
 ## 3. Usa
 
@@ -52,15 +41,10 @@ posto dell'indirizzo si usa quello Tailscale del Raspberry (chiedilo a Riccardo)
 
 ## Per chi gestisce il Raspberry
 
-Autorizzare un collega (dal tuo Mac, con il codice che ti ha mandato copiato negli appunti):
-
-```bash
-pbpaste | ssh raspberry '~/agency-briefing/scripts/add-team-key.sh'
-```
-
-La chiave viene aggiunta in `~/.ssh/authorized_keys` con `restrict` e il comando forzato
-`gweb-ssh-guard`: può eseguire solo i comandi di gweb usati dall'app (registrazione,
-elenco e upload, notebook), non una shell. Per revocarla: elimina la riga con il suo nome
-(`briefing-<utente>@<mac>`) da `~/.ssh/authorized_keys` sul Raspberry.
+L'app contiene una chiave SSH condivisa del team (presa da `~/.config/gweb-team/` sul Mac di
+chi prepara il pacchetto), autorizzata sul Raspberry con `restrict` e il comando forzato
+`gweb-ssh-guard`: può usare solo le funzioni di Briefing, non una shell. Il DMG va quindi
+dato solo ai colleghi, non pubblicato. Per revocarla: togli la riga `briefing-team` da
+`~/.ssh/authorized_keys` sul Raspberry, crea una nuova chiave e rifai il pacchetto.
 
 Nuova versione dell'app: `macos/GwebBar/build-app.sh --dmg` nel repository.

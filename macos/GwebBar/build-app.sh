@@ -4,6 +4,7 @@
 #   ./build-app.sh --install   # e la installa in ~/Applications e la avvia
 #   ./build-app.sh --dmg       # crea build/Briefing-<versione>.dmg da passare al team
 #
+# Il pacchetto contiene la chiave del team: va dato solo ai colleghi, non pubblicato.
 # Firma: "Developer ID Application" se presente nel portachiavi (SIGN_IDENTITY per sceglierla),
 # altrimenti ad-hoc. Notarizzazione del DMG se NOTARY_PROFILE è il nome di un profilo creato
 # una volta con `xcrun notarytool store-credentials`.
@@ -28,6 +29,14 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/GwebBar"
 cp "$WORK/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
+# Chiave SSH condivisa del team (fuori dal repository): l'app funziona appena installata.
+TEAM_KEY="${TEAM_KEY:-$HOME/.config/gweb-team/team_ed25519}"
+if [[ -f "$TEAM_KEY" ]]; then
+  cp "$TEAM_KEY" "$APP/Contents/Resources/team_ed25519"
+  echo "Chiave del team inclusa"
+else
+  echo "ATTENZIONE: chiave del team assente ($TEAM_KEY): i colleghi non potranno collegarsi"
+fi
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
