@@ -109,6 +109,7 @@ più probabilmente vorrai cambiare:
 | `[cleanup]` | `mode` | `"all"` | `"segments"` = tiene l'M4A, elimina solo i WAV |
 | `[recording]` | `max_duration_minutes` | `240` | arresto automatico di sicurezza |
 | `[recording]` | `min_free_mb` | `500` | spazio minimo per avviare; per briefing di 2 ore usa almeno `2000` |
+| `[encoding]` | `audio_filter` | riduzione rumore | `""` = audio senza filtri; i WAV originali non vengono mai filtrati |
 | `[encoding]` | `bitrate` | `"96k"` | `"64k"` per file più piccoli con connessioni lente |
 
 Dopo ogni modifica, applica e controlla:

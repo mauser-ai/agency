@@ -35,6 +35,9 @@ resume_window_seconds = 180
 # File caricato su NotebookLM: m4a (consigliato) | mp3 | wav (sconsigliato, issue #2138)
 upload_format = "m4a"
 bitrate = "96k"
+# Riduzione rumore applicata al file caricato (i WAV originali restano intatti).
+# "" = disattivata. Per applicarla a una registrazione esistente: gweb recordings finalize ID
+audio_filter = "highpass=f=90,afftdn=nf=-25:nr=20:tn=1"
 
 [upload]
 # Caricamento automatico dopo lo stop (default: esplicito con `gweb recordings upload`)

@@ -1,9 +1,11 @@
 import os
 import stat
 import struct
+from pathlib import Path
 
 import pytest
 
+from agency_briefing.audio import encode
 from agency_briefing.audio.capture import list_segment_files
 from agency_briefing.audio.devices import list_capture_devices, resolve_device
 from agency_briefing.audio.wav import analyze_levels, read_wav_info, repair_wav, write_wav_header
@@ -189,3 +191,20 @@ def test_data_dirs_and_db_files_private_with_permissive_umask(tmp_path, monkeypa
         p = cfg.data_dir / f"gweb.db{suffix}"
         assert stat.S_IMODE(p.stat().st_mode) == 0o600, p
     db.close()
+
+
+def test_encode_applies_audio_filter(tmp_path, monkeypatch):
+    seg = _wav(tmp_path / "part001.wav", seconds=1.0)
+    default = load_config(tmp_path / "missing.toml").get("encoding.audio_filter")
+    # Il filtro di default deve essere accettato dall'ffmpeg installato.
+    out, mime = encode.encode_segments([seg], tmp_path / "rec", fmt="m4a", bitrate="96k",
+                                       channels=1, audio_filter=default)
+    assert out.exists() and out.stat().st_size > 0 and mime == "audio/mp4"
+    seen = []
+    monkeypatch.setattr(encode, "_run", lambda argv, timeout=None: (
+        seen.append(argv), Path(argv[-1]).write_bytes(b"x")))
+    encode.encode_segments([seg], tmp_path / "a", fmt="m4a", bitrate="96k", channels=1,
+                           audio_filter="highpass=f=90")
+    encode.encode_segments([seg], tmp_path / "b", fmt="m4a", bitrate="96k", channels=1)
+    assert seen[0][seen[0].index("-af") + 1] == "highpass=f=90"
+    assert "-af" not in seen[1]

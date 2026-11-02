@@ -70,7 +70,8 @@ def finalize_recording(cfg: Config, store: RecordingStore, recording_id: str) ->
             final, mime = encode_segments(segments, Path(rec.dir_path) / rec.id,
                                           fmt=enc["upload_format"], bitrate=enc["bitrate"],
                                           channels=int(rec.channels or cfg.get("audio.channels")),
-                                          ffmpeg=enc["ffmpeg"])
+                                          ffmpeg=enc["ffmpeg"],
+                                          audio_filter=enc["audio_filter"])
     except EncodeError as exc:
         log.error("Finalizzazione %s fallita: %s", rec.id, exc.message)
         store.db.add_event("finalize_failed", exc.message, level="error", recording_id=rec.id)

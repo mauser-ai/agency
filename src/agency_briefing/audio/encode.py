@@ -49,8 +49,14 @@ def _run(argv: list[str], timeout: float | None = None) -> None:
 
 
 def encode_segments(segments: list[Path], output_base: Path, *, fmt: str, bitrate: str,
-                    channels: int, ffmpeg: str = "ffmpeg") -> tuple[Path, str]:
-    """Unisce ``segments`` in un unico file. Scrittura atomica (``.part`` + rename)."""
+                    channels: int, ffmpeg: str = "ffmpeg",
+                    audio_filter: str = "") -> tuple[Path, str]:
+    """Unisce ``segments`` in un unico file. Scrittura atomica (``.part`` + rename).
+
+    ``audio_filter`` (catena ``-af`` di ffmpeg) si applica solo al file prodotto: sul Pi
+    con l'HAT WM8960 il guadagno alto lascia un fruscio a ~-38 dBFS che il filtro di
+    default porta a ~-55 dBFS senza toccare la voce.
+    """
     if not segments:
         raise EncodeError("Nessun segmento audio da unire")
     args, mime, ext = FORMAT_ARGS[fmt]
@@ -63,6 +69,8 @@ def encode_segments(segments: list[Path], output_base: Path, *, fmt: str, bitrat
             fh.write(f"file '{escaped}'\n")
     argv = [ffmpeg, "-hide_banner", "-loglevel", "error", "-nostdin", "-y",
             "-f", "concat", "-safe", "0", "-i", str(list_file), "-vn", "-ac", str(channels)]
+    if audio_filter:
+        argv += ["-af", audio_filter]
     if fmt != "wav":
         argv += ["-b:a", bitrate]
     argv += args + [str(tmp)]

@@ -22,7 +22,7 @@ SD 115 GB (87 GB liberi). Utente `riccardo` (non `pi`), host `DartsVision`, ragg
 - `gweb.service` utente: attivo, abilitato, heartbeat del demone ok dopo il riavvio.
 - `gweb doctor`: tutto ✓ (microfono compreso) tranne la sessione NotebookLM (assente:
   login dal Mac non ancora fatto).
-- `pytest` sul Pi: 45 test passati in ~55 s; `ruff` pulito.
+- `pytest` sul Pi: 46 test passati in ~55 s; `ruff` pulito.
 - **Microfono: HAT I2S Keyestudio 2-Mic Pi HAT V1.0** (clone del ReSpeaker 2-Mic v1.0,
   codec WM8960 a 0x1a su i2c-1, `dtoverlay=wm8960-soundcard` in
   `/boot/firmware/config.txt`; nessun microfono USB). Scheda ALSA `wm8960soundcard`,
@@ -56,8 +56,16 @@ Correzioni emerse sul Pi:
   (un solo campione a fondo scala nei primi millisecondi; il resto a −27/−30 dBFS di
   picco): l'analisi dei livelli del test ora esclude i primi 0,5 s. Test:
   `test_levels_skip_codec_startup_click`.
+- **Rumore di fondo**: registrazione reale di 21 s con voce ("Prova microfono") con
+  fruscio udibile, rumore nelle pause −38 dBFS, voce −21 dBFS (separazione 17 dB).
+  Nuova opzione `[encoding] audio_filter`, default `highpass=f=90,afftdn=nf=-25:nr=20:tn=1`,
+  applicata solo al file caricato (WAV originali intatti). Sulla stessa registrazione,
+  rigenerata con `gweb recordings finalize`: rumore −54,9 dBFS, voce −21,6 dBFS
+  (separazione 33 dB), ~32× tempo reale sul Pi 4. Confrontati anche filtri più leggeri,
+  più forti e `anlmdn` (più lento, meno efficace). Giudizio d'ascolto dell'utente da
+  confermare; `""` disattiva il filtro. Test: `test_encode_applies_audio_filter`.
 
-## Completato e verificato (test automatici: `pytest`, 45 test, ~25 s x86 / ~55 s Pi 4)
+## Completato e verificato (test automatici: `pytest`, 46 test, ~25 s x86 / ~55 s Pi 4)
 - Configurazione TOML con default, validazione di chiavi e tipi, `config init/show/path`.
 - Scoperta microfono da `/proc/asound` (finto) per **ID scheda**, `auto` = primo USB,
   errore operativo se assente.
@@ -129,9 +137,9 @@ Prova manuale end-to-end eseguita (backend fake, arecord simulato): `service run
 ## Prossimi passi
 1. ~~Collegarsi al Pi: `./scripts/inspect-pi.sh`, `./scripts/install.sh`, `gweb doctor`.~~
    Fatto il 2026-11-02 (vedi sopra).
-2. ~~`gweb audio test --duration 10`~~ fatto con l'HAT (vedi sopra). Da valutare in una
-   registrazione vera se il guadagno al massimo (+30 dB) dà rumore di fondo eccessivo
-   (`alsamixer -c wm8960soundcard`, poi `sudo alsactl store`).
+2. ~~`gweb audio test --duration 10`~~ fatto con l'HAT (vedi sopra); rumore di fondo
+   ridotto in codifica. Da verificare su un briefing vero (voci lontane dal microfono,
+   più persone) che il filtro non renda la voce metallica.
 3. Login dal Mac, `gweb notebook status`, `gweb notebook list` (sola lettura).
 4. Prova di registrazione reale breve; upload su un notebook di prova **solo dopo conferma**.
 5. Aggiornare questo file con gli esiti reali (formato accettato, tempi di elaborazione).

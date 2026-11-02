@@ -110,6 +110,7 @@ non c'è un perimetro. Risultato in `summaries` (JSON completo) e
 | `plughw:CARD=<id>` | L'indice della scheda cambia; `plughw` converte frequenza/canali se il microfono non supporta 48 kHz mono. |
 | Segmenti WAV da 5 min | Un crash compromette al massimo un segmento (riparabile). PCM grezzo = nessuna perdita di qualità durante la cattura. |
 | Upload in **M4A/AAC 96 kbit/s** | La documentazione di notebooklm-py 0.8.6 (issue #2138, `docs/python-api.md`) riporta che un `.wav` si carica ma l'elaborazione termina in `status=ERROR`. Inoltre 1 h WAV 48 kHz mono ≈ 345 MB contro ≈ 43 MB in AAC. La conversione è quindi necessaria, non estetica. MP3 disponibile (`upload_format = "mp3"`). |
+| Riduzione rumore in codifica (`highpass=f=90,afftdn=nf=-25:nr=20:tn=1`) | Sul Pi con l'HAT WM8960 il guadagno necessario per la voce lascia un fruscio a ~-38 dBFS. Misurato su una registrazione reale: rumore -38 → -55 dBFS, voce invariata (-21 dBFS), ~32× tempo reale sul Pi 4 (1 h ≈ 2 min). `anlmdn` più lento (~4×) e meno efficace; `arnndn` richiede un modello esterno. Solo sul file caricato: i WAV originali restano grezzi, `""` disattiva. |
 | Import MP3/M4A senza conversione | Formati già adatti: nessuna conversione inutile. Altri formati (WAV, OGG, FLAC…) → codificati. |
 | SQLite (WAL) + filesystem | Nessuna ragione emersa per altro: un solo nodo, scritture rare, transazioni e vincoli di unicità tra processi. |
 | CLI ↔ demone via DB | Nessun socket/porta: richieste durevoli, sopravvivono a riavvii, testabili; la futura API userà gli stessi metodi di `AgencyApp`. |

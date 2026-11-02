@@ -59,6 +59,9 @@ DEFAULTS: dict[str, dict[str, Any]] = {
         # Formato del file caricato su NotebookLM. I segmenti WAV originali restano sempre.
         "upload_format": "m4a",  # m4a | mp3 | wav
         "bitrate": "96k",
+        # Filtro ffmpeg sul file caricato (non sui WAV originali). Default: taglio sotto
+        # 90 Hz + riduzione rumore FFT adattiva; "" = nessun filtro.
+        "audio_filter": "highpass=f=90,afftdn=nf=-25:nr=20:tn=1",
         "ffmpeg": "ffmpeg",
         "ffprobe": "ffprobe",
     },
