@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+
+# Dati di runtime: MAI nel repository
+*.wav
+*.m4a
+*.mp3
+*.ogg
+*.flac
+*.db
+*.db-wal
+*.db-shm
+*.sqlite*
+*.log
+logs/
+recordings/
+data/
+state/
+
+# Credenziali e segreti
+storage_state.json
+master_token.json
+*.secret
+.env
+credentials/
+config.toml
+!examples/config.example.toml

@@ -1,0 +1,64 @@
+# Configurazione di esempio per `agency` — NESSUNA credenziale va in questo file.
+# Copia in ~/.config/agency/config.toml (oppure: agency config init) e modifica solo
+# le chiavi che ti servono: tutte le altre usano i valori di default mostrati qui.
+
+[paths]
+# Dati (database SQLite, audio, riepiloghi)
+# data_dir = "~/.local/share/agency"
+# Stato di runtime (log, lock, test audio)
+# state_dir = "~/.local/state/agency"
+# Credenziali NotebookLM (directory 0700, file 0600). Fuori dal repository.
+# credentials_dir = "~/.config/agency/credentials"
+
+[audio]
+# "auto" = primo microfono USB. Oppure ID scheda ALSA ("Device", vedi `agency audio devices`)
+# o PCM completo ("plughw:CARD=Device,DEV=0"). Mai l'indice numerico: può cambiare.
+device = "auto"
+sample_rate = 48000
+channels = 1
+sample_format = "S16_LE"
+# Durata di ogni segmento WAV: un crash fa perdere al massimo l'intestazione dell'ultimo.
+segment_seconds = 300
+# capture_command = "arecord"
+
+[recording]
+max_duration_minutes = 240
+# Spazio minimo per avviare / soglia che ferma la registrazione in corso
+min_free_mb = 500
+critical_free_mb = 150
+# Microfono scollegato: per quanto tempo riprovare prima di chiudere la registrazione
+reconnect_timeout_seconds = 120
+# Riavvio del servizio entro questa finestra: la registrazione riprende da sola
+resume_window_seconds = 180
+
+[encoding]
+# File caricato su NotebookLM: m4a (consigliato) | mp3 | wav (sconsigliato, issue #2138)
+upload_format = "m4a"
+bitrate = "96k"
+
+[upload]
+# Caricamento automatico dopo lo stop (default: esplicito con `agency recordings upload`)
+auto_after_stop = false
+title_template = "{title} - {date} [{id}]"
+max_attempts = 8
+backoff_base_seconds = 30
+backoff_max_seconds = 3600
+request_timeout_seconds = 900
+processing_poll_seconds = 30
+processing_timeout_minutes = 180
+processing_error_grace_minutes = 20
+reconcile_settle_seconds = 120
+auth_recheck_minutes = 15
+
+[notebooklm]
+# "notebooklm-py" (reale) oppure "fake" (prove senza account Google)
+backend = "notebooklm-py"
+profile = "default"
+# Rinnovo periodico dei cookie (consigliato 15-20 min dalla documentazione della libreria)
+keepalive_minutes = 20
+timeout_seconds = 60
+
+[service]
+unit_name = "agency.service"
+poll_interval_seconds = 0.5
+heartbeat_stale_seconds = 15
