@@ -100,7 +100,7 @@ class AuthRequired(RemoteError):
     def __init__(self, message: str = "Sessione NotebookLM assente o scaduta", **kw):
         kw.setdefault(
             "hint",
-            "Esegui il login sul Mac e trasferisci la sessione: vedi 'agency notebook login'.",
+            "Esegui il login sul Mac e trasferisci la sessione: vedi 'gweb notebook login'.",
         )
         super().__init__(message, **kw)
 

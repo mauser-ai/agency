@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Ispezione del Raspberry Pi in SOLA LETTURA (nessuna modifica al sistema).
-# Uso: ./scripts/inspect-pi.sh | tee ~/agency-inspect.txt
+# Uso: ./scripts/inspect-pi.sh | tee ~/gweb-inspect.txt
 set -u
 
 section() { printf '\n===== %s =====\n' "$*"; }
@@ -43,6 +43,6 @@ done
 command -v ffmpeg >/dev/null && ffmpeg -hide_banner -encoders 2>/dev/null | grep -E ' aac | libmp3lame '
 
 section "Servizi del progetto"
-run systemctl --user status agency.service --no-pager
+run systemctl --user status gweb.service --no-pager
 run loginctl show-user "$(id -un)" -p Linger
-run ls -la ~/.config/agency ~/.local/share/agency 2>/dev/null
+run ls -la ~/.config/gweb ~/.local/share/gweb 2>/dev/null

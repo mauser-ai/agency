@@ -51,17 +51,17 @@ Prova manuale end-to-end eseguita (backend fake, arecord simulato): `service run
 ## NON verificato (richiede il Raspberry o l'account)
 | Cosa | Come verificarlo |
 |---|---|
-| Modello, RAM, architettura (32/64 bit), OS e Python del Pi | `./scripts/inspect-pi.sh`, `agency doctor` |
-| `arecord` reale col microfono USB, formati supportati, nome della scheda | `agency audio devices`, `agency audio test --duration 10` |
-| Riconnessione con scollegamento fisico dell'USB | registra, scollega 10 s, ricollega, `agency recordings show ID` (eventi) |
-| Tempo di codifica AAC sul Pi 4 per registrazioni lunghe | `agency record stop --wait-final` dopo 30–60 min |
-| systemd utente, linger, avvio al boot, `service logs` | `agency service install`, `sudo reboot`, `agency service status` |
-| Login dal Mac e import della sessione | procedura README, poi `agency notebook status` |
+| Modello, RAM, architettura (32/64 bit), OS e Python del Pi | `./scripts/inspect-pi.sh`, `gweb doctor` |
+| `arecord` reale col microfono USB, formati supportati, nome della scheda | `gweb audio devices`, `gweb audio test --duration 10` |
+| Riconnessione con scollegamento fisico dell'USB | registra, scollega 10 s, ricollega, `gweb recordings show ID` (eventi) |
+| Tempo di codifica AAC sul Pi 4 per registrazioni lunghe | `gweb record stop --wait-final` dopo 30–60 min |
+| systemd utente, linger, avvio al boot, `service logs` | `gweb service install`, `sudo reboot`, `gweb service status` |
+| Login dal Mac e import della sessione | procedura README, poi `gweb notebook status` |
 | `notebook list/sources`, `ask` con citazioni reali | sola lettura prima |
 | Upload audio reale, tempi di elaborazione, accettazione M4A da NotebookLM | **solo su tua richiesta esplicita**, su un notebook di prova |
-| Comportamento della rinomina del titolo (`[ID]`) sull'upload reale | `agency notebook sources` dopo il primo upload |
-| Timer di pulizia settimanale (`agency-cleanup.timer`) | `cleanup.enabled = true`, `agency service install`, `systemctl --user list-timers` |
-| Durata reale dei cookie con keepalive ogni 20 min | `agency notebook status` nei giorni successivi |
+| Comportamento della rinomina del titolo (`[ID]`) sull'upload reale | `gweb notebook sources` dopo il primo upload |
+| Timer di pulizia settimanale (`gweb-cleanup.timer`) | `cleanup.enabled = true`, `gweb service install`, `systemctl --user list-timers` |
+| Durata reale dei cookie con keepalive ogni 20 min | `gweb notebook status` nei giorni successivi |
 
 ## Limitazioni note
 - notebooklm-py è non ufficiale: API e formati possono cambiare; versione bloccata a 0.8.6.
@@ -81,9 +81,9 @@ Prova manuale end-to-end eseguita (backend fake, arecord simulato): `service run
   riscaricabile (non verificato).
 
 ## Prossimi passi
-1. Collegarsi al Pi: `./scripts/inspect-pi.sh`, `./scripts/install.sh`, `agency doctor`.
-2. `agency audio test --duration 10`, scegliere il microfono se serve.
-3. Login dal Mac, `agency notebook status`, `agency notebook list` (sola lettura).
+1. Collegarsi al Pi: `./scripts/inspect-pi.sh`, `./scripts/install.sh`, `gweb doctor`.
+2. `gweb audio test --duration 10`, scegliere il microfono se serve.
+3. Login dal Mac, `gweb notebook status`, `gweb notebook list` (sola lettura).
 4. Prova di registrazione reale breve; upload su un notebook di prova **solo dopo conferma**.
 5. Aggiornare questo file con gli esiti reali (formato accettato, tempi di elaborazione).
 6. Poi: API locale autenticata per l'app Mac; pulsante/LED GPIO.

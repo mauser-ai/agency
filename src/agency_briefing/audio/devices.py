@@ -21,7 +21,7 @@ _PCM_RE = re.compile(r"^(\d+)-(\d+):\s*([^:]*):\s*([^:]*)(?::(.*))?$")
 
 
 def asound_root() -> Path:
-    return Path(os.environ.get("AGENCY_ASOUND_ROOT", "/proc/asound"))
+    return Path(os.environ.get("GWEB_ASOUND_ROOT", "/proc/asound"))
 
 
 @dataclass
@@ -113,7 +113,7 @@ def resolve_device(spec: str, root: Path | None = None) -> tuple[str, CaptureDev
         if not usb:
             raise DeviceError(
                 "Nessun microfono USB di cattura trovato",
-                hint="Collega il microfono e verifica con 'agency audio devices' "
+                hint="Collega il microfono e verifica con 'gweb audio devices' "
                      "(o 'arecord -l'). Puoi anche impostare audio.device manualmente.",
                 details={"devices": [d.to_dict() for d in devices]},
             )
@@ -124,7 +124,7 @@ def resolve_device(spec: str, root: Path | None = None) -> tuple[str, CaptureDev
     if not exact:
         raise DeviceError(
             f"Dispositivo di cattura '{spec}' non presente",
-            hint="Microfono scollegato? Controlla con 'agency audio devices'.",
+            hint="Microfono scollegato? Controlla con 'gweb audio devices'.",
         )
     return exact[0].alsa_pcm, exact[0]
 

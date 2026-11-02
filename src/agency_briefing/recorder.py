@@ -184,7 +184,7 @@ class Recorder:
                 f"Il processo di cattura è terminato subito (codice {rc}): "
                 f"{cap.tail_log(300) or 'nessun dettaglio'}",
                 hint="Microfono scollegato o in uso da un altro programma? "
-                     "Verifica con 'agency audio test'.")
+                     "Verifica con 'gweb audio test'.")
         self.db.execute("INSERT INTO segments(recording_id, part, started_at) VALUES(?,?,?)",
                         (rec.id, active.part, iso()))
         active.capture = cap

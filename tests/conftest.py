@@ -26,7 +26,7 @@ def asound(tmp_path, monkeypatch):
     root.mkdir()
     (root / "cards").write_text(CARDS)
     (root / "pcm").write_text(PCM)
-    monkeypatch.setenv("AGENCY_ASOUND_ROOT", str(root))
+    monkeypatch.setenv("GWEB_ASOUND_ROOT", str(root))
     return root
 
 
@@ -60,9 +60,9 @@ def cfg_path(tmp_path, asound, monkeypatch):
         [service]
         poll_interval_seconds = 0.1
     """))
-    monkeypatch.setenv("AGENCY_CONFIG", str(path))
-    monkeypatch.setenv("AGENCY_FAKE_READY_AFTER", "0")
-    monkeypatch.delenv("AGENCY_FAKE_FAIL", raising=False)
+    monkeypatch.setenv("GWEB_CONFIG", str(path))
+    monkeypatch.setenv("GWEB_FAKE_READY_AFTER", "0")
+    monkeypatch.delenv("GWEB_FAKE_FAIL", raising=False)
     monkeypatch.setenv("FAKE_ARECORD_SPEED", "20")
     return path
 

@@ -62,7 +62,7 @@ def test_upload_happy_path_distinguishes_uploaded_and_ready(app):
 def test_network_error_retries_with_backoff(app, monkeypatch):
     rec = _ready_recording(app)
     app.queue.enqueue(app.store.get(rec["id"]), rec["notebook_id"])
-    monkeypatch.setenv("AGENCY_FAKE_FAIL", "network:2")
+    monkeypatch.setenv("GWEB_FAKE_FAIL", "network:2")
     jobs = _drain(app)
     states = [j.state for j in jobs]
     assert states[:2] == [JobState.PENDING, JobState.PENDING]
@@ -73,7 +73,7 @@ def test_network_error_retries_with_backoff(app, monkeypatch):
 def test_timeout_after_upload_reconciles_without_duplicate(app, monkeypatch):
     rec = _ready_recording(app)
     app.queue.enqueue(app.store.get(rec["id"]), rec["notebook_id"])
-    monkeypatch.setenv("AGENCY_FAKE_FAIL", "timeout_after_upload:1")
+    monkeypatch.setenv("GWEB_FAKE_FAIL", "timeout_after_upload:1")
     jobs = _drain(app)
     assert jobs[0].state == JobState.UNCERTAIN
     assert app.store.get(rec["id"]).upload_status in (UploadStatus.UNCERTAIN,
@@ -86,7 +86,7 @@ def test_timeout_after_upload_reconciles_without_duplicate(app, monkeypatch):
 def test_timeout_before_upload_needs_two_absent_checks(app, monkeypatch):
     rec = _ready_recording(app)
     app.queue.enqueue(app.store.get(rec["id"]), rec["notebook_id"])
-    monkeypatch.setenv("AGENCY_FAKE_FAIL", "timeout_before_upload:1")
+    monkeypatch.setenv("GWEB_FAKE_FAIL", "timeout_before_upload:1")
     jobs = _drain(app)
     assert [j.state for j in jobs[:2]] == [JobState.UNCERTAIN, JobState.UNCERTAIN]
     assert jobs[-1].state == JobState.SUCCEEDED
@@ -96,10 +96,10 @@ def test_timeout_before_upload_needs_two_absent_checks(app, monkeypatch):
 def test_uncertain_stays_visible_when_reconciliation_impossible(app, monkeypatch):
     rec = _ready_recording(app)
     app.queue.enqueue(app.store.get(rec["id"]), rec["notebook_id"])
-    monkeypatch.setenv("AGENCY_FAKE_FAIL", "timeout_before_upload:1")
+    monkeypatch.setenv("GWEB_FAKE_FAIL", "timeout_before_upload:1")
     jobs = _drain(app, steps=1)
     assert jobs[0].state == JobState.UNCERTAIN
-    monkeypatch.setenv("AGENCY_FAKE_FAIL", "list_network:100")
+    monkeypatch.setenv("GWEB_FAKE_FAIL", "list_network:100")
     w = UploadWorker(app.cfg, app.queue, app.backend)
     for _ in range(3):
         j = w.run_once()
@@ -113,7 +113,7 @@ def test_uncertain_stays_visible_when_reconciliation_impossible(app, monkeypatch
 def test_expired_session_blocks_without_consuming_attempts(app, monkeypatch):
     rec = _ready_recording(app)
     job = app.queue.enqueue(app.store.get(rec["id"]), rec["notebook_id"])
-    monkeypatch.setenv("AGENCY_FAKE_FAIL", "auth:1")
+    monkeypatch.setenv("GWEB_FAKE_FAIL", "auth:1")
     w = UploadWorker(app.cfg, app.queue, app.backend)
     j = w.run_once()
     assert j.state == JobState.BLOCKED_AUTH and j.attempts == 0
@@ -126,7 +126,7 @@ def test_expired_session_blocks_without_consuming_attempts(app, monkeypatch):
 def test_rate_limit_and_permanent_failure_then_manual_retry(app, monkeypatch):
     rec = _ready_recording(app)
     job = app.queue.enqueue(app.store.get(rec["id"]), rec["notebook_id"])
-    monkeypatch.setenv("AGENCY_FAKE_FAIL", "rate_limit:1")
+    monkeypatch.setenv("GWEB_FAKE_FAIL", "rate_limit:1")
     j = UploadWorker(app.cfg, app.queue, app.backend).run_once()
     assert j.state == JobState.PENDING and j.error_code == "RATE_LIMITED"
     # File locale sparito -> errore permanente, poi retry manuale dopo ripristino
@@ -159,7 +159,7 @@ def test_queue_survives_restart_and_interrupted_upload_is_uncertain(cfg_path):
 
 
 def test_processing_error_marks_failed(app, monkeypatch):
-    monkeypatch.setenv("AGENCY_FAKE_FAIL", "processing_error:1")
+    monkeypatch.setenv("GWEB_FAKE_FAIL", "processing_error:1")
     app.cfg.data["upload"]["processing_error_grace_minutes"] = 0
     rec = _ready_recording(app)
     app.queue.enqueue(app.store.get(rec["id"]), rec["notebook_id"])

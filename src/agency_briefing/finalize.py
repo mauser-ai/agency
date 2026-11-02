@@ -74,7 +74,7 @@ def finalize_recording(cfg: Config, store: RecordingStore, recording_id: str) ->
     except EncodeError as exc:
         log.error("Finalizzazione %s fallita: %s", rec.id, exc.message)
         store.db.add_event("finalize_failed", exc.message, level="error", recording_id=rec.id)
-        # Lo stato FAILED con segmenti presenti è recuperabile: 'agency recordings finalize'.
+        # Lo stato FAILED con segmenti presenti è recuperabile: 'gweb recordings finalize'.
         store.update(rec.id, state=RecState.FAILED, error=f"Finalizzazione fallita: {exc.message}")
         return store.get(rec.id)
     store.update(rec.id, state=RecState.READY, file_path=str(final), mime_type=mime,

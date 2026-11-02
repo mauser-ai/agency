@@ -111,7 +111,7 @@ class CaptureProcess:
 
 
 def run_capture_once(argv: list[str], timeout: float) -> subprocess.CompletedProcess:
-    """Cattura bloccante a durata fissa (usata da 'agency audio test')."""
+    """Cattura bloccante a durata fissa (usata da 'gweb audio test')."""
     try:
         return subprocess.run(argv, capture_output=True, timeout=timeout, text=True,
                               stdin=subprocess.DEVNULL)

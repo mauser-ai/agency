@@ -70,7 +70,7 @@ class JobQueue:
     def get(self, job_id: int) -> Job:
         row = self.db.one("SELECT * FROM jobs WHERE id=?", (job_id,))
         if row is None:
-            raise NotFound(f"Lavoro {job_id} non trovato", hint="Elenco: agency jobs list")
+            raise NotFound(f"Lavoro {job_id} non trovato", hint="Elenco: gweb jobs list")
         return Job.from_row(row)
 
     def list(self, *, include_done: bool = True, limit: int = 50,
@@ -103,7 +103,7 @@ class JobQueue:
     def enqueue(self, rec: Recording, notebook_id: str) -> Job:
         if rec.state != RecState.READY or not rec.file_path:
             raise NotReady(f"La registrazione {rec.id} non è pronta (stato: {rec.state})",
-                           hint="Attendi la fine della finalizzazione: agency recordings show "
+                           hint="Attendi la fine della finalizzazione: gweb recordings show "
                                 + rec.id)
         if not Path(rec.file_path).is_file():
             if rec.purged_scope == "all":
@@ -129,7 +129,7 @@ class JobQueue:
                 hint = "Nessun nuovo upload: eviterebbe un duplicato."
             else:
                 msg = f"Upload già in coda per questo notebook (lavoro {job.id if job else '?'})"
-                hint = "Controlla con 'agency jobs list'; per forzare subito: agency jobs retry ID"
+                hint = "Controlla con 'gweb jobs list'; per forzare subito: gweb jobs retry ID"
             raise Conflict(msg, hint=hint, details={"job": job.to_dict() if job else None}) \
                 from exc
         job_id = int(cur.lastrowid)
@@ -364,7 +364,7 @@ class UploadWorker:
             q._set(job.id, state=JobState.FAILED, error_code="PROCESSING_TIMEOUT",
                    remote_status=src.status, finished_at=iso(),
                    last_error="Elaborazione non conclusa entro il tempo massimo "
-                              "(agency jobs retry ID per ricontrollare)")
+                              "(gweb jobs retry ID per ricontrollare)")
             return
         q._set(job.id, **fields)
 

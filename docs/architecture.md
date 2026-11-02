@@ -17,11 +17,11 @@
 | Cosa | Percorso (default XDG) | Permessi |
 |---|---|---|
 | Codice + venv | `~/agency-briefing`, `~/agency-briefing/.venv` | utente |
-| Configurazione | `~/.config/agency/config.toml` | utente |
-| Credenziali NotebookLM | `~/.config/agency/credentials/notebooklm/profiles/default/storage_state.json` | dir 0700, file 0600 |
-| Dati | `~/.local/share/agency/` (`agency.db`, `recordings/`, `summaries/`) | DB 0600, UMask 0077 nel servizio |
-| Stato/log | `~/.local/state/agency/` (`logs/agency.log`, `daemon.lock`, `audio-tests/`) | utente |
-| Unità systemd | `~/.config/systemd/user/agency.service` | utente |
+| Configurazione | `~/.config/gweb/config.toml` | utente |
+| Credenziali NotebookLM | `~/.config/gweb/credentials/notebooklm/profiles/default/storage_state.json` | dir 0700, file 0600 |
+| Dati | `~/.local/share/gweb/` (`gweb.db`, `recordings/`, `summaries/`) | DB 0600, UMask 0077 nel servizio |
+| Stato/log | `~/.local/state/gweb/` (`logs/gweb.log`, `daemon.lock`, `audio-tests/`) | utente |
+| Unità systemd | `~/.config/systemd/user/gweb.service` | utente |
 
 Lo stato mutabile scelto da CLI (notebook predefinito, microfono) è nella tabella `settings`
 del DB, così la CLI non riscrive mai `config.toml`.
@@ -29,7 +29,7 @@ del DB, così la CLI non riscrive mai `config.toml`.
 ## Flussi
 
 ### Registrazione
-1. `agency record start` → verifica demone vivo (heartbeat < 15 s) e spazio → `INSERT`
+1. `gweb record start` → verifica demone vivo (heartbeat < 15 s) e spazio → `INSERT`
    in `recordings` con stato `requested` e notebook risolto **in quel momento** (copia di
    ID e titolo: le modifiche successive al predefinito non la toccano). L'indice unico
    parziale `ux_one_active_recording` impedisce due registrazioni attive.
@@ -41,7 +41,7 @@ del DB, così la CLI non riscrive mai `config.toml`.
    soglia critica → stop con audio conservato), processo terminato → evento
    `capture_lost`, riconnessione ogni 3 s se la scheda ricompare (nuovo `partNNN+1`), oltre
    `reconnect_timeout_seconds` → chiusura `device_lost`.
-4. `agency record stop` → `stop_requested=1` → SIGINT ad arecord (chiude l'intestazione) →
+4. `gweb record stop` → `stop_requested=1` → SIGINT ad arecord (chiude l'intestazione) →
    `finalizing` → thread finalizer: riparazione intestazioni, ffmpeg concat+AAC → file
    `<ID>.m4a` scritto come `.part` e rinominato atomicamente → `ready`.
 5. Con `upload.auto_after_stop = true` la finalizzazione accoda l'upload.
@@ -69,7 +69,7 @@ Macchina a stati in `queue.py`. Punti chiave:
   `uncertain`: nessun reinvio finché due riconciliazioni a distanza di
   `reconcile_settle_seconds` non confermano l'assenza. Se l'elenco fonti non è
   raggiungibile il lavoro resta `uncertain` e visibile; risoluzione manuale:
-  `agency jobs resolve ID --source-id SRC` oppure `--not-uploaded`.
+  `gweb jobs resolve ID --source-id SRC` oppure `--not-uploaded`.
 - Lavoro `running` trovato all'avvio del demone → `uncertain` (`INTERRUPTED`).
 - Sessione scaduta (`AuthError`) → `blocked_auth` senza consumare tentativi; si sblocca
   quando cambia `storage_state.json` (import di una nuova sessione) o ogni 15 min.
@@ -80,7 +80,7 @@ Macchina a stati in `queue.py`. Punti chiave:
   `failed/PROCESSING_TIMEOUT` (ricontrollabile con `jobs retry`).
 
 ### Pulizia dell'audio già su NotebookLM
-`agency recordings prune` (manuale) o `agency-cleanup.timer` (systemd utente, di default
+`gweb recordings prune` (manuale) o `gweb-cleanup.timer` (systemd utente, di default
 domenica 03:30, `Persistent=true` = recupera il giro perso se il Pi era spento). Una
 registrazione viene ripulita solo se: stato `ready`, lavoro `succeeded` con ID fonte, fonte
 pronta da ≥ `min_age_days` (7) e **verifica remota al momento** (`list_sources` del notebook:
@@ -92,13 +92,13 @@ all'archivio. Una registrazione ripulita con `all` non è più caricabile né ri
 Rischio accettato con `all`: non è garantito che NotebookLM permetta di riscaricare l'audio.
 
 ### Riepilogo
-`agency briefing summarize ID`: richiede lavoro con fonte pronta (verifica remota se non
+`gweb briefing summarize ID`: richiede lavoro con fonte pronta (verifica remota se non
 ancora `succeeded`). Domanda 1 con `source_ids=[fonte della registrazione]` (sezioni:
 sintesi, richieste, decisioni, attività, responsabili/scadenze solo se espliciti, domande
 aperte). Domanda 2 **solo se** esistono altre fonti `READY`: confronto per possibili
 richieste fuori preventivo, con istruzione di rispondere "Nessun confronto possibile" se
 non c'è un perimetro. Risultato in `summaries` (JSON completo) e
-`~/.local/share/agency/summaries/<ID>-<timestamp>.md`.
+`~/.local/share/gweb/summaries/<ID>-<timestamp>.md`.
 
 ## Decisioni tecniche
 

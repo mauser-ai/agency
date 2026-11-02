@@ -1,8 +1,8 @@
 """Configurazione: file TOML statico + percorsi separati per codice, dati, stato e credenziali.
 
 Ordine di risoluzione del file di configurazione:
-1. variabile d'ambiente ``AGENCY_CONFIG``
-2. ``$XDG_CONFIG_HOME/agency/config.toml`` (default ``~/.config/agency/config.toml``)
+1. variabile d'ambiente ``GWEB_CONFIG``
+2. ``$XDG_CONFIG_HOME/gweb/config.toml`` (default ``~/.config/gweb/config.toml``)
 
 Se il file non esiste si usano i default. Lo stato mutabile (notebook predefinito,
 microfono scelto da CLI) NON sta qui ma nella tabella ``settings`` di SQLite, così la
@@ -33,9 +33,9 @@ def _xdg(var: str, default: str) -> Path:
 
 DEFAULTS: dict[str, dict[str, Any]] = {
     "paths": {
-        "data_dir": str(_xdg("XDG_DATA_HOME", ".local/share") / "agency"),
-        "state_dir": str(_xdg("XDG_STATE_HOME", ".local/state") / "agency"),
-        "credentials_dir": str(_xdg("XDG_CONFIG_HOME", ".config") / "agency" / "credentials"),
+        "data_dir": str(_xdg("XDG_DATA_HOME", ".local/share") / "gweb"),
+        "state_dir": str(_xdg("XDG_STATE_HOME", ".local/state") / "gweb"),
+        "credentials_dir": str(_xdg("XDG_CONFIG_HOME", ".config") / "gweb" / "credentials"),
     },
     "audio": {
         # "auto" = primo dispositivo di cattura USB; oppure ID scheda ALSA (es. "Device")
@@ -89,7 +89,7 @@ DEFAULTS: dict[str, dict[str, Any]] = {
         "mode": "all",                     # all = tutto l'audio | segments = solo WAV, tiene l'M4A
     },
     "service": {
-        "unit_name": "agency.service",
+        "unit_name": "gweb.service",
         "poll_interval_seconds": 0.5,
         "heartbeat_stale_seconds": 15,
     },
@@ -99,10 +99,10 @@ VALID_FORMATS = {"m4a", "mp3", "wav"}
 
 
 def config_file_path() -> Path:
-    env = os.environ.get("AGENCY_CONFIG")
+    env = os.environ.get("GWEB_CONFIG")
     if env:
         return Path(env).expanduser()
-    return _xdg("XDG_CONFIG_HOME", ".config") / "agency" / "config.toml"
+    return _xdg("XDG_CONFIG_HOME", ".config") / "gweb" / "config.toml"
 
 
 def _merge(base: dict, override: dict, prefix: str = "") -> dict:
@@ -158,7 +158,7 @@ class Config:
 
     @property
     def db_path(self) -> Path:
-        return self.data_dir / "agency.db"
+        return self.data_dir / "gweb.db"
 
     @property
     def recordings_dir(self) -> Path:
@@ -256,7 +256,7 @@ def example_config_text() -> str:
         if candidate.exists():
             return candidate.read_text(encoding="utf-8")
     # Fallback per installazioni non editabili
-    lines = ["# Configurazione agency (generata). Tutte le chiavi sono opzionali.", ""]
+    lines = ["# Configurazione gweb (generata). Tutte le chiavi sono opzionali.", ""]
     for section, values in DEFAULTS.items():
         lines.append(f"[{section}]")
         for key, value in values.items():

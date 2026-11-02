@@ -87,7 +87,7 @@ def test_not_deleted_when_source_removed_from_notebook(app):
                                       ("auth:100", AuthRequired)])
 def test_remote_failure_aborts_without_deleting(app, monkeypatch, fail, exc):
     rec = _uploaded(app)
-    monkeypatch.setenv("AGENCY_FAKE_FAIL", fail)
+    monkeypatch.setenv("GWEB_FAKE_FAIL", fail)
     with pytest.raises(exc):
         app.recordings_prune(execute=True, min_age_days=0)
     assert Path(rec.file_path).exists()
@@ -120,6 +120,6 @@ def test_schema_migration_adds_columns(tmp_path):
 
 
 def test_timer_units():
-    service, timer = render_timer_units("/x/agency", "Sun *-*-* 03:30:00")
-    assert "ExecStart=/x/agency recordings prune --yes" in service
+    service, timer = render_timer_units("/x/gweb", "Sun *-*-* 03:30:00")
+    assert "ExecStart=/x/gweb recordings prune --yes" in service
     assert "OnCalendar=Sun *-*-* 03:30:00" in timer and "Persistent=true" in timer

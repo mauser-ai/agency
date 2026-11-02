@@ -7,7 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-AGENCY = str(Path(sys.executable).with_name("agency"))
+AGENCY = str(Path(sys.executable).with_name("gweb"))
 
 
 def run(*args, stdin=None, env=None):

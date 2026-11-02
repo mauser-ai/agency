@@ -49,7 +49,7 @@ class RecordingStore:
                                  hint="Usa più caratteri dell'ID")
         if row is None:
             raise NotFound(f"Registrazione {recording_id} non trovata",
-                           hint="Elenco: agency recordings list")
+                           hint="Elenco: gweb recordings list")
         return Recording.from_row(row)
 
     def list(self, limit: int = 50, state: str | None = None) -> list[Recording]:
@@ -92,7 +92,7 @@ class RecordingStore:
             raise Conflict(
                 "C'è già una registrazione attiva" + (f": {active.id} «{active.title}»"
                                                        if active else ""),
-                hint="Fermala con 'agency record stop' prima di avviarne un'altra.",
+                hint="Fermala con 'gweb record stop' prima di avviarne un'altra.",
             ) from exc
         return self.get(rid)
 

@@ -1,4 +1,4 @@
-"""Demone ``agency service run``: registrazione + coda upload + keepalive della sessione.
+"""Demone ``gweb service run``: registrazione + coda upload + keepalive della sessione.
 
 Thread:
 - principale: controller registrazione (tick ogni ``poll_interval_seconds``) e heartbeat;
@@ -51,7 +51,7 @@ class Daemon:
             fcntl.flock(self._lock_fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as exc:
             raise AlreadyRunning("Il servizio è già in esecuzione",
-                                 hint="agency service status") from exc
+                                 hint="gweb service status") from exc
         self._lock_fh.seek(0)
         self._lock_fh.truncate()
         self._lock_fh.write(str(os.getpid()))
@@ -127,7 +127,7 @@ class Daemon:
         if threading.current_thread() is threading.main_thread():
             signal.signal(signal.SIGTERM, self.stop)
             signal.signal(signal.SIGINT, self.stop)
-        log.info("Servizio agency %s avviato (pid %d)", __version__, os.getpid())
+        log.info("Servizio gweb %s avviato (pid %d)", __version__, os.getpid())
         self._heartbeat()
         n = self.app.queue.recover_after_restart()
         if n:

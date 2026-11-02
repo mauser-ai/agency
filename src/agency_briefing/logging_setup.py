@@ -48,7 +48,7 @@ def setup_logging(log_dir: Path | None, level: int = logging.INFO, *,
         root.addHandler(sh)
     if log_dir is not None:
         log_dir.mkdir(parents=True, exist_ok=True)
-        fh = logging.handlers.RotatingFileHandler(log_dir / "agency.log", maxBytes=1_000_000,
+        fh = logging.handlers.RotatingFileHandler(log_dir / "gweb.log", maxBytes=1_000_000,
                                                   backupCount=5, encoding="utf-8")
         fh.setFormatter(fmt)
         fh.addFilter(flt)

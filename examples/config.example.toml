@@ -1,17 +1,17 @@
-# Configurazione di esempio per `agency` — NESSUNA credenziale va in questo file.
-# Copia in ~/.config/agency/config.toml (oppure: agency config init) e modifica solo
+# Configurazione di esempio per `gweb` — NESSUNA credenziale va in questo file.
+# Copia in ~/.config/gweb/config.toml (oppure: gweb config init) e modifica solo
 # le chiavi che ti servono: tutte le altre usano i valori di default mostrati qui.
 
 [paths]
 # Dati (database SQLite, audio, riepiloghi)
-# data_dir = "~/.local/share/agency"
+# data_dir = "~/.local/share/gweb"
 # Stato di runtime (log, lock, test audio)
-# state_dir = "~/.local/state/agency"
+# state_dir = "~/.local/state/gweb"
 # Credenziali NotebookLM (directory 0700, file 0600). Fuori dal repository.
-# credentials_dir = "~/.config/agency/credentials"
+# credentials_dir = "~/.config/gweb/credentials"
 
 [audio]
-# "auto" = primo microfono USB. Oppure ID scheda ALSA ("Device", vedi `agency audio devices`)
+# "auto" = primo microfono USB. Oppure ID scheda ALSA ("Device", vedi `gweb audio devices`)
 # o PCM completo ("plughw:CARD=Device,DEV=0"). Mai l'indice numerico: può cambiare.
 device = "auto"
 sample_rate = 48000
@@ -37,7 +37,7 @@ upload_format = "m4a"
 bitrate = "96k"
 
 [upload]
-# Caricamento automatico dopo lo stop (default: esplicito con `agency recordings upload`)
+# Caricamento automatico dopo lo stop (default: esplicito con `gweb recordings upload`)
 auto_after_stop = false
 title_template = "{title} - {date} [{id}]"
 max_attempts = 8
@@ -61,7 +61,7 @@ timeout_seconds = 60
 [cleanup]
 # Pulizia automatica settimanale (timer systemd) dell'audio locale GIÀ PRONTO su NotebookLM.
 # Ogni fonte viene ricontrollata su NotebookLM prima di eliminare; senza rete o con
-# sessione scaduta non si elimina nulla. Dopo aver cambiato: agency service install
+# sessione scaduta non si elimina nulla. Dopo aver cambiato: gweb service install
 enabled = false
 schedule = "Sun *-*-* 03:30:00"   # sintassi OnCalendar di systemd (domenica 03:30)
 min_age_days = 7                  # giorni da quando la fonte è risultata pronta
@@ -71,6 +71,6 @@ min_age_days = 7                  # giorni da quando la fonte è risultata pront
 mode = "all"
 
 [service]
-unit_name = "agency.service"
+unit_name = "gweb.service"
 poll_interval_seconds = 0.5
 heartbeat_stale_seconds = 15

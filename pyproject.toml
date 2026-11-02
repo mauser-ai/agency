@@ -23,7 +23,7 @@ headless = ["notebooklm-py[headless]==0.8.6"]
 dev = ["pytest>=8", "ruff>=0.5"]
 
 [project.scripts]
-agency = "agency_briefing.cli.main:main"
+gweb = "agency_briefing.cli.main:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -84,8 +84,8 @@ class AgencyApp:
         if not self.daemon_state()["alive"]:
             raise ServiceUnavailable(
                 "Il servizio in background non è attivo",
-                hint="Avvialo con 'systemctl --user start agency' (installazione: "
-                     "'agency service install'); per prove: 'agency service run' in un "
+                hint="Avvialo con 'systemctl --user start gweb' (installazione: "
+                     "'gweb service install'); per prove: 'gweb service run' in un "
                      "altro terminale.")
 
     def service_status(self) -> dict:
@@ -150,7 +150,7 @@ class AgencyApp:
         if res.returncode != 0 or not out.exists():
             raise DeviceError(f"Test di registrazione fallito (codice {res.returncode}): "
                               f"{res.stderr.strip()[-400:]}",
-                              hint="Verifica il dispositivo con 'agency audio devices'; "
+                              hint="Verifica il dispositivo con 'gweb audio devices'; "
                                    "'Device or resource busy' = microfono in uso.")
         levels = analyze_levels(out)
         return {"file": str(out), "device": pcm, "bytes": out.stat().st_size,
@@ -242,10 +242,10 @@ class AgencyApp:
         if len(cand) == 1:
             return cand[0]
         if not cand:
-            raise NotFound(f"Notebook '{spec}' non trovato", hint="agency notebook list")
+            raise NotFound(f"Notebook '{spec}' non trovato", hint="gweb notebook list")
         raise UsageError(f"'{spec}' corrisponde a {len(cand)} notebook",
                          details={"matches": [n.to_dict() for n in cand]},
-                         hint="Usa l'ID completo (agency notebook list)")
+                         hint="Usa l'ID completo (gweb notebook list)")
 
     def notebook_select(self, spec: str) -> dict:
         nb = self.resolve_notebook(spec)
@@ -265,7 +265,7 @@ class AgencyApp:
         nb = self.resolve_notebook(spec)
         if nb is None:
             raise UsageError("Nessun notebook indicato e nessun notebook predefinito",
-                             hint="Usa --notebook ID oppure 'agency notebook select'")
+                             hint="Usa --notebook ID oppure 'gweb notebook select'")
         return nb
 
     # ------------------------------------------------------------------ registrazione
@@ -325,7 +325,7 @@ class AgencyApp:
         if not self.daemon_state()["alive"]:
             return {"recording": self.store.get(rec.id).to_dict(), "warnings": [
                 "Servizio non attivo: l'arresto e la finalizzazione avverranno al suo avvio "
-                "(systemctl --user start agency)"]}
+                "(systemctl --user start gweb)"]}
         if wait:
             terminal = (RecState.READY, RecState.FAILED) if wait_final else \
                 (RecState.FINALIZING, RecState.READY, RecState.FAILED)
@@ -382,7 +382,7 @@ class AgencyApp:
             nb = self.resolve_notebook(None)
             if nb is None:
                 raise UsageError("La registrazione non ha un notebook associato",
-                                 hint="agency recordings upload ID --notebook NOTEBOOK_ID")
+                                 hint="gweb recordings upload ID --notebook NOTEBOOK_ID")
             warnings.append(f"Uso il notebook predefinito: {nb.title or nb.id}")
         if rec.notebook_id != nb.id:
             if rec.upload_status in (UploadStatus.NOT_UPLOADED, UploadStatus.FAILED,
@@ -395,7 +395,7 @@ class AgencyApp:
         job = self.queue.enqueue(rec, nb.id)
         if not self.daemon_state()["alive"]:
             warnings.append("Servizio non attivo: il caricamento partirà al suo avvio "
-                            "(oppure esegui 'agency jobs run')")
+                            "(oppure esegui 'gweb jobs run')")
         elif wait:
             deadline = time.monotonic() + float(self.cfg.get("upload.request_timeout_seconds"))
             while time.monotonic() < deadline:
@@ -457,7 +457,7 @@ class AgencyApp:
             rec = self.store.get(recording)
             if not rec.remote_source_id or rec.upload_status != UploadStatus.READY:
                 raise NotReady(f"La fonte della registrazione {rec.id} non è pronta "
-                               f"(stato: {rec.upload_status})", hint="agency jobs list")
+                               f"(stato: {rec.upload_status})", hint="gweb jobs list")
             source_ids.append(rec.remote_source_id)
             notebook = notebook or rec.notebook_id
         nb = self._require_notebook(notebook)
@@ -473,7 +473,7 @@ class AgencyApp:
         if job is None or not job.remote_source_id:
             raise NotReady(f"La registrazione {rec.id} non è stata caricata "
                            f"(stato: {rec.upload_status})",
-                           hint=f"agency recordings upload {rec.id}")
+                           hint=f"gweb recordings upload {rec.id}")
 
         async def fn(s):
             if job.state != JobState.SUCCEEDED:
@@ -482,7 +482,7 @@ class AgencyApp:
                     raise NotReady(
                         "Upload completato ma la fonte non è ancora pronta "
                         f"(stato remoto: {src.status if src else 'assente'})",
-                        hint="Riprova tra qualche minuto; stato: agency jobs list")
+                        hint="Riprova tra qualche minuto; stato: gweb jobs list")
                 self.queue._set(job.id, state=JobState.SUCCEEDED, remote_status=src.status,
                                 finished_at=iso())
             return await run_summary(s, notebook_id=rec.notebook_id,
@@ -521,7 +521,7 @@ class AgencyApp:
         add("config", "ok" if self.cfg.loaded_from_file else "warn",
             str(self.cfg.source_path) + ("" if self.cfg.loaded_from_file else " (assente: "
                                          "default)"),
-            None if self.cfg.loaded_from_file else "agency config init")
+            None if self.cfg.loaded_from_file else "gweb config init")
         add("database", "ok", str(self.cfg.db_path))
         free = free_mb(self.cfg.data_dir)
         add("spazio", "ok" if free >= self.cfg.get("recording.min_free_mb") else "fail",
@@ -551,7 +551,7 @@ class AgencyApp:
             add("notebooklm-py", "fail", "non installato", "pip install -e .")
         local = self.auth_local()
         if not local["exists"]:
-            add("sessione NotebookLM", "warn", "assente", "agency notebook login")
+            add("sessione NotebookLM", "warn", "assente", "gweb notebook login")
         elif local.get("secure_permissions") is False:
             add("sessione NotebookLM", "fail", f"permessi {local['mode']}",
                 f"chmod 600 {local['storage_path']}")
@@ -566,7 +566,7 @@ class AgencyApp:
             add("servizio", "ok" if unit["active"] == "active" else "warn",
                 f"installato={unit['installed']} attivo={unit['active']} "
                 f"abilitato={unit['enabled']}",
-                None if unit["active"] == "active" else "agency service install")
+                None if unit["active"] == "active" else "gweb service install")
         if unit["linger"] is False:
             add("linger", "warn", "il servizio non parte all'avvio senza login",
                 "sudo loginctl enable-linger $USER")

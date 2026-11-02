@@ -39,14 +39,14 @@ WantedBy=default.target
 """
 
 
-def agency_executable() -> str:
+def gweb_executable() -> str:
     exe = Path(sys.argv[0]).resolve() if sys.argv and sys.argv[0] else None
-    if exe and exe.name == "agency" and exe.exists():
+    if exe and exe.name == "gweb" and exe.exists():
         return str(exe)
-    candidate = Path(sys.executable).with_name("agency")
+    candidate = Path(sys.executable).with_name("gweb")
     if candidate.exists():
         return str(candidate)
-    found = shutil.which("agency")
+    found = shutil.which("gweb")
     return found or str(candidate)
 
 
@@ -58,9 +58,9 @@ def unit_path(unit_name: str) -> Path:
 def render_unit(config_path: Path | None = None) -> str:
     readme = Path(__file__).resolve().parents[2] / "README.md"
     config_env = ""
-    if os.environ.get("AGENCY_CONFIG") and config_path:
-        config_env = f"Environment=AGENCY_CONFIG={config_path}\n"
-    return UNIT_TEMPLATE.format(exec_path=agency_executable(), readme=readme,
+    if os.environ.get("GWEB_CONFIG") and config_path:
+        config_env = f"Environment=GWEB_CONFIG={config_path}\n"
+    return UNIT_TEMPLATE.format(exec_path=gweb_executable(), readme=readme,
                                 config_env=config_env)
 
 
@@ -96,8 +96,8 @@ def unit_state(unit_name: str) -> dict:
     return info
 
 
-CLEANUP_SERVICE = "agency-cleanup.service"
-CLEANUP_TIMER = "agency-cleanup.timer"
+CLEANUP_SERVICE = "gweb-cleanup.service"
+CLEANUP_TIMER = "gweb-cleanup.timer"
 
 
 def install_cleanup_timer(schedule: str, enabled: bool) -> list[str]:
@@ -105,7 +105,7 @@ def install_cleanup_timer(schedule: str, enabled: bool) -> list[str]:
     from .cleanup import render_timer_units
 
     steps: list[str] = []
-    service, timer = render_timer_units(agency_executable(), schedule)
+    service, timer = render_timer_units(gweb_executable(), schedule)
     if enabled:
         for name, content in ((CLEANUP_SERVICE, service), (CLEANUP_TIMER, timer)):
             path = unit_path(name)

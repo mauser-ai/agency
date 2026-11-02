@@ -2,11 +2,11 @@
 
 Attivazione: ``[notebooklm] backend = "fake"`` nel config.
 
-Iniezione di guasti (solo test): variabile ``AGENCY_FAKE_FAIL`` con voci separate da
+Iniezione di guasti (solo test): variabile ``GWEB_FAKE_FAIL`` con voci separate da
 virgola ``modo[:quante_volte]``. Modi: ``auth``, ``network``, ``rate_limit``,
 ``timeout_before_upload``, ``timeout_after_upload`` (la fonte viene creata ma l'upload
 risulta incerto), ``list_network`` (fallisce l'elenco fonti), ``processing_error``.
-``AGENCY_FAKE_READY_AFTER``: secondi prima che una fonte diventi pronta (default 1).
+``GWEB_FAKE_READY_AFTER``: secondi prima che una fonte diventi pronta (default 1).
 """
 
 from __future__ import annotations
@@ -90,7 +90,7 @@ class _FakeSession(NotebookSession):
         self.b = backend
 
     def maybe_fail(self, mode: str) -> bool:
-        spec = os.environ.get("AGENCY_FAKE_FAIL", "")
+        spec = os.environ.get("GWEB_FAKE_FAIL", "")
         for item in filter(None, (x.strip() for x in spec.split(","))):
             name, _, count = item.partition(":")
             if name != mode:
@@ -161,7 +161,7 @@ class _FakeSession(NotebookSession):
         if not path.is_file():
             raise PermanentRemoteError(f"File non trovato: {path}")
         will_fail = self.maybe_fail("processing_error")
-        ready_after = float(os.environ.get("AGENCY_FAKE_READY_AFTER", "1"))
+        ready_after = float(os.environ.get("GWEB_FAKE_READY_AFTER", "1"))
         src = {"id": "src-" + uuid.uuid4().hex[:12], "title": title,
                "status": SourceState.PROCESSING, "ready_at": time.time() + ready_after,
                "will_fail": will_fail, "mime": mime_type, "bytes": path.stat().st_size,

@@ -2,7 +2,7 @@
 
 Registratore di briefing per **Raspberry Pi 4 + microfono USB** che carica le registrazioni
 come fonti audio nei notebook **NotebookLM** e li interroga (domande con citazioni, riepilogo
-strutturato). Tutto da terminale con il comando `agency`; continua a funzionare chiudendo
+strutturato). Tutto da terminale con il comando `gweb`; continua a funzionare chiudendo
 SSH o spegnendo il Mac (servizio systemd). Nessun modello AI locale.
 
 > L'integrazione usa [notebooklm-py](https://github.com/teng-lin/notebooklm-py) 0.8.6,
@@ -30,7 +30,7 @@ git clone https://github.com/mauser-ai/agency-briefing.git ~/agency-briefing
 ```
 
 ```bash
-cd ~/agency-briefing && ./scripts/inspect-pi.sh | tee ~/agency-inspect.txt
+cd ~/agency-briefing && ./scripts/inspect-pi.sh | tee ~/gweb-inspect.txt
 ```
 
 ```bash
@@ -46,32 +46,32 @@ sudo loginctl enable-linger "$USER"
 ```
 
 `install.sh` crea `.venv`, installa il pacchetto in modalità modificabile, collega
-`~/.local/bin/agency`, crea `~/.config/agency/config.toml` se assente (non sovrascrive),
-installa e avvia il servizio utente `agency.service`, esegue `agency doctor`.
+`~/.local/bin/gweb`, crea `~/.config/gweb/config.toml` se assente (non sovrascrive),
+installa e avvia il servizio utente `gweb.service`, esegue `gweb doctor`.
 `enable-linger` (unico comando con sudo) fa partire il servizio al boot senza login.
 
 Verifica:
 
 ```bash
-agency doctor
+gweb doctor
 ```
 
 ```bash
-agency audio devices
+gweb audio devices
 ```
 
 ```bash
-agency audio test --duration 10
+gweb audio test --duration 10
 ```
 
 Se `~/.local/bin` non è nel PATH (sessioni non di login), usa
-`~/agency-briefing/.venv/bin/agency`.
+`~/agency-briefing/.venv/bin/gweb`.
 
 ## Login NotebookLM dal Mac (via SSH)
 
 Il login Google richiede un browser, quindi si fa sul Mac e si trasferisce **solo** il
 file di sessione `storage_state.json`. Non incollare mai password o cookie in chat o nel
-terminale del Pi. `agency notebook login` sul Pi stampa questa stessa procedura con il tuo
+terminale del Pi. `gweb notebook login` sul Pi stampa questa stessa procedura con il tuo
 utente/host.
 
 Sul Mac, una tantum:
@@ -97,7 +97,7 @@ Login (si apre Chromium; completa l'accesso Google, anche 2FA):
 Trasferimento cifrato via SSH, senza file temporanei sul Pi (scritto con permessi 0600):
 
 ```bash
-ssh pi@raspberrypi.local '~/agency-briefing/.venv/bin/agency notebook login --import -' < ~/.notebooklm/profiles/default/storage_state.json
+ssh pi@raspberrypi.local '~/agency-briefing/.venv/bin/gweb notebook login --import -' < ~/.notebooklm/profiles/default/storage_state.json
 ```
 
 Elimina la copia sul Mac, così un solo client usa (e ruota) quei cookie:
@@ -109,7 +109,7 @@ rm ~/.notebooklm/profiles/default/storage_state.json
 Sul Pi, verifica di sola lettura:
 
 ```bash
-agency notebook status
+gweb notebook status
 ```
 
 **Sessione scaduta**: `notebook status` esce con codice 5 e i caricamenti passano a
@@ -118,7 +118,7 @@ da sola appena il file cambia. Il servizio rinnova i cookie ogni 20 minuti (come
 raccomandato dalla libreria) per ridurre le scadenze.
 
 **Opzionale – master token** (`notebooklm login --master-token --account EMAIL` sul Mac,
-`pip install -e ".[headless]"` sul Pi, `agency notebook login --import-master-token -`):
+`pip install -e ".[headless]"` sul Pi, `gweb notebook login --import-master-token -`):
 permette il rinnovo automatico anche dopo la scadenza dei cookie, ma è una credenziale
 **dell'intero account Google, durevole, che sopravvive al cambio password**. Usala solo con
 un account dedicato e valuta il rischio; revoca da Google Account → Sicurezza → Dispositivi.
@@ -126,63 +126,63 @@ un account dedicato e valuta il rischio; revoca da Google Account → Sicurezza 
 ## Uso tipico
 
 ```bash
-agency notebook list
+gweb notebook list
 ```
 
 ```bash
-agency notebook select
+gweb notebook select
 ```
 
 ```bash
-agency record start --title "Briefing nuovo sito"
+gweb record start --title "Briefing nuovo sito"
 ```
 
 Puoi chiudere SSH: la registrazione continua. Più tardi:
 
 ```bash
-agency record status
+gweb record status
 ```
 
 ```bash
-agency record stop --wait-final
+gweb record stop --wait-final
 ```
 
 ```bash
-agency recordings list
+gweb recordings list
 ```
 
 ```bash
-agency recordings upload RECORDING_ID --wait
+gweb recordings upload RECORDING_ID --wait
 ```
 
 ```bash
-agency jobs list
+gweb jobs list
 ```
 
 Quando lo stato è "fonte pronta" (upload completato ≠ fonte pronta: NotebookLM deve
 trascrivere l'audio, può richiedere minuti):
 
 ```bash
-agency briefing summarize RECORDING_ID
+gweb briefing summarize RECORDING_ID
 ```
 
 ```bash
-agency ask --recording RECORDING_ID "Quali decisioni sono state prese?"
+gweb ask --recording RECORDING_ID "Quali decisioni sono state prese?"
 ```
 
-Il riepilogo è salvato in `~/.local/share/agency/summaries/`. Per caricare automaticamente
+Il riepilogo è salvato in `~/.local/share/gweb/summaries/`. Per caricare automaticamente
 dopo lo stop: `auto_after_stop = true` nella sezione `[upload]` del config.
 
 ## Dove sono i dati
 
 | Cosa | Percorso |
 |---|---|
-| Config | `~/.config/agency/config.toml` (esempio: `examples/config.example.toml`) |
-| Sessione NotebookLM | `~/.config/agency/credentials/notebooklm/profiles/default/storage_state.json` (0600) |
-| Database | `~/.local/share/agency/agency.db` |
-| Audio | `~/.local/share/agency/recordings/<ID>/segments/*.wav` (originali) e `<ID>.m4a` (caricato) |
-| Riepiloghi | `~/.local/share/agency/summaries/` |
-| Log | `journalctl --user -u agency` e `~/.local/state/agency/logs/agency.log` |
+| Config | `~/.config/gweb/config.toml` (esempio: `examples/config.example.toml`) |
+| Sessione NotebookLM | `~/.config/gweb/credentials/notebooklm/profiles/default/storage_state.json` (0600) |
+| Database | `~/.local/share/gweb/gweb.db` |
+| Audio | `~/.local/share/gweb/recordings/<ID>/segments/*.wav` (originali) e `<ID>.m4a` (caricato) |
+| Riepiloghi | `~/.local/share/gweb/summaries/` |
+| Log | `journalctl --user -u gweb` e `~/.local/state/gweb/logs/gweb.log` |
 
 Un'ora occupa ≈ 345 MB di WAV + 43 MB di M4A (48 kHz mono). Gli audio non vengono
 eliminati, a meno di attivare la pulizia qui sotto.
@@ -196,18 +196,18 @@ funzionano non si elimina nulla. Metadati e riepiloghi restano.
 Prova in simulazione (non elimina nulla):
 
 ```bash
-agency recordings prune
+gweb recordings prune
 ```
 
-Attivazione: in `~/.config/agency/config.toml` imposta `enabled = true` nella sezione
+Attivazione: in `~/.config/gweb/config.toml` imposta `enabled = true` nella sezione
 `[cleanup]` (ogni domenica alle 03:30, solo fonti pronte da almeno 7 giorni), poi:
 
 ```bash
-agency service install
+gweb service install
 ```
 
 ```bash
-systemctl --user list-timers agency-cleanup.timer
+systemctl --user list-timers gweb-cleanup.timer
 ```
 
 > ⚠️ NotebookLM conserva la fonte (contenuti interrogabili), ma non è garantito che l'audio
@@ -218,17 +218,17 @@ systemctl --user list-timers agency-cleanup.timer
 
 | Sintomo | Causa probabile | Cosa fare |
 |---|---|---|
-| `Nessun microfono USB di cattura trovato` (exit 9) | Microfono scollegato o non riconosciuto | `arecord -l`, `lsusb`; `agency audio select <ID scheda>` |
-| `Device or resource busy` | Microfono usato da un'altra applicazione o da una registrazione | `agency record status`; ferma l'altro programma |
+| `Nessun microfono USB di cattura trovato` (exit 9) | Microfono scollegato o non riconosciuto | `arecord -l`, `lsusb`; `gweb audio select <ID scheda>` |
+| `Device or resource busy` | Microfono usato da un'altra applicazione o da una registrazione | `gweb record status`; ferma l'altro programma |
 | `audio test` esito "silenzio" | Guadagno a zero / mute | `alsamixer -c <ID scheda>` (F4 = capture) |
-| `Permission denied` su `/dev/snd` | Utente non nel gruppo audio | `sudo usermod -aG audio $USER`, poi nuovo login e `agency service restart` |
-| `Il servizio in background non è attivo` (exit 6) | Demone fermo | `agency service status`, `agency service logs`, `systemctl --user start agency` |
+| `Permission denied` su `/dev/snd` | Utente non nel gruppo audio | `sudo usermod -aG audio $USER`, poi nuovo login e `gweb service restart` |
+| `Il servizio in background non è attivo` (exit 6) | Demone fermo | `gweb service status`, `gweb service logs`, `systemctl --user start gweb` |
 | Servizio non parte al boot | Linger disattivato | `sudo loginctl enable-linger $USER` |
 | Lavoro `blocked_auth` / exit 5 | Sessione Google scaduta | Ripeti il login dal Mac e `--import -` |
-| Lavoro `uncertain` | Timeout durante l'upload: esito sconosciuto | Attendi: la coda verifica da sola il notebook. Se resta incerto: `agency notebook sources -n NB`; se vedi la fonte con `[ID]` nel titolo `agency jobs resolve JOB --source-id SRC`, altrimenti `agency jobs resolve JOB --not-uploaded` |
-| Lavoro `failed` `PROCESSING_FAILED` | NotebookLM non ha elaborato l'audio | Controlla la fonte nell'interfaccia web; eliminala e `agency jobs retry JOB` dopo averla rimossa, oppure prova `upload_format = "mp3"` e `agency recordings finalize ID` |
-| Registrazione `failed` "Finalizzazione fallita" | Errore ffmpeg | `agency recordings finalize ID` (i segmenti sono intatti) |
-| Riepilogo exit 8 | Fonte non ancora pronta | `agency jobs list`; riprova più tardi |
+| Lavoro `uncertain` | Timeout durante l'upload: esito sconosciuto | Attendi: la coda verifica da sola il notebook. Se resta incerto: `gweb notebook sources -n NB`; se vedi la fonte con `[ID]` nel titolo `gweb jobs resolve JOB --source-id SRC`, altrimenti `gweb jobs resolve JOB --not-uploaded` |
+| Lavoro `failed` `PROCESSING_FAILED` | NotebookLM non ha elaborato l'audio | Controlla la fonte nell'interfaccia web; eliminala e `gweb jobs retry JOB` dopo averla rimossa, oppure prova `upload_format = "mp3"` e `gweb recordings finalize ID` |
+| Registrazione `failed` "Finalizzazione fallita" | Errore ffmpeg | `gweb recordings finalize ID` (i segmenti sono intatti) |
+| Riepilogo exit 8 | Fonte non ancora pronta | `gweb jobs list`; riprova più tardi |
 | NotebookLM risponde in modo inatteso / errori di parsing | API non ufficiale cambiata | Controlla le release di notebooklm-py; aggiorna la versione bloccata solo dopo verifica |
 
 Sicurezza: nessuna porta di rete aperta; servizio senza root (`NoNewPrivileges`,

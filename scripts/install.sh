@@ -49,15 +49,15 @@ say "Ambiente virtuale in $VENV"
 "$VENV/bin/python" -m pip install --quiet --upgrade pip
 "$VENV/bin/python" -m pip install --quiet -e "$REPO_DIR"
 
-say "Collegamento comando in ~/.local/bin/agency"
+say "Collegamento comando in ~/.local/bin/gweb"
 mkdir -p "$HOME/.local/bin"
-ln -sf "$VENV/bin/agency" "$HOME/.local/bin/agency"
+ln -sf "$VENV/bin/gweb" "$HOME/.local/bin/gweb"
 
-CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/agency/config.toml"
+CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/gweb/config.toml"
 if [[ -f "$CONFIG" ]]; then
   say "Configurazione esistente mantenuta: $CONFIG"
 else
-  "$VENV/bin/agency" config init
+  "$VENV/bin/gweb" config init
 fi
 
 if ! id -nG | tr ' ' '\n' | grep -qx audio; then
@@ -67,7 +67,7 @@ fi
 
 if [[ $WITH_SERVICE -eq 1 ]]; then
   say "Servizio systemd utente"
-  "$VENV/bin/agency" service install
+  "$VENV/bin/gweb" service install
   if [[ "$(loginctl show-user "$(id -un)" -p Linger --value 2>/dev/null || true)" != "yes" ]]; then
     echo "Per avviare il servizio al boot senza login (una volta sola):"
     echo "  sudo loginctl enable-linger $(id -un)"
@@ -75,6 +75,6 @@ if [[ $WITH_SERVICE -eq 1 ]]; then
 fi
 
 say "Verifica"
-"$VENV/bin/agency" doctor || true
+"$VENV/bin/gweb" doctor || true
 echo
-echo "Prossimo passo: agency notebook login   (istruzioni per il login dal Mac)"
+echo "Prossimo passo: gweb notebook login   (istruzioni per il login dal Mac)"

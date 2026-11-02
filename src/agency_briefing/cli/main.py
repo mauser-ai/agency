@@ -1,4 +1,4 @@
-"""CLI ``agency``. Client sottile di ``AgencyApp``: nessuna logica di dominio qui."""
+"""CLI ``gweb``. Client sottile di ``AgencyApp``: nessuna logica di dominio qui."""
 
 from __future__ import annotations
 
@@ -22,12 +22,12 @@ from . import output as out
 
 EPILOG_MAIN = """\b
 Esempi:
-  agency doctor
-  agency notebook select
-  agency record start --title "Briefing nuovo sito"
-  agency record stop
-  agency recordings upload r261102-153012-a1b2
-  agency briefing summarize r261102-153012-a1b2
+  gweb doctor
+  gweb notebook select
+  gweb record start --title "Briefing nuovo sito"
+  gweb record stop
+  gweb recordings upload r261102-153012-a1b2
+  gweb briefing summarize r261102-153012-a1b2
 
 Codici di uscita: 0 ok · 1 errore · 2 uso errato · 3 non trovato · 4 conflitto di stato
 5 login necessario · 6 servizio non attivo · 7 errore remoto · 8 non pronto
@@ -38,7 +38,7 @@ Codici di uscita: 0 ok · 1 errore · 2 uso errato · 3 non trovato · 4 conflit
 class Ctx:
     def __init__(self, config: str | None, json_mode: bool, verbose: int):
         if config:
-            os.environ["AGENCY_CONFIG"] = str(Path(config).expanduser().resolve())
+            os.environ["GWEB_CONFIG"] = str(Path(config).expanduser().resolve())
         self.json = json_mode
         self.verbose = verbose
         self._app = None
@@ -77,11 +77,11 @@ def emit(data, human) -> None:
 
 @click.group(epilog=EPILOG_MAIN, context_settings={"help_option_names": ["-h", "--help"],
                                                    "max_content_width": 100})
-@click.option("--config", type=click.Path(dir_okay=False), envvar="AGENCY_CONFIG",
-              help="File di configurazione (default ~/.config/agency/config.toml).")
+@click.option("--config", type=click.Path(dir_okay=False), envvar="GWEB_CONFIG",
+              help="File di configurazione (default ~/.config/gweb/config.toml).")
 @click.option("--json", "json_mode", is_flag=True, help="Output JSON per tutti i comandi.")
 @click.option("-v", "--verbose", count=True, help="Log più dettagliati (-vv per debug).")
-@click.version_option(__version__, prog_name="agency")
+@click.version_option(__version__, prog_name="gweb")
 @click.pass_context
 def cli(ctx, config, json_mode, verbose):
     """Registra briefing dal microfono USB e li carica come fonti su NotebookLM."""
@@ -141,7 +141,7 @@ def config_show():
 @config.command("init")
 @click.option("--force", is_flag=True, help="Sovrascrive (con backup .bak) un file esistente.")
 def config_init(force):
-    """Crea ~/.config/agency/config.toml dall'esempio commentato."""
+    """Crea ~/.config/gweb/config.toml dall'esempio commentato."""
     path = config_file_path()
     if path.exists() and not force:
         raise UsageError(f"{path} esiste già", hint="Modificalo a mano o usa --force (backup)")
@@ -190,7 +190,7 @@ def audio_select(device):
     if device is None:
         devices = c().app.audio_devices()["devices"]
         if not devices or not out.is_tty():
-            raise UsageError("Indica il dispositivo", hint="agency audio select Device")
+            raise UsageError("Indica il dispositivo", hint="gweb audio select Device")
         for i, d in enumerate(devices, 1):
             click.echo(f"{i}) {d['card_id']}  {d['name']}  ({d['alsa_pcm']})")
         idx = click.prompt("Numero", type=click.IntRange(1, len(devices)))
@@ -207,7 +207,7 @@ def audio_test(duration):
     """Registra una prova breve e mostra i livelli (picco/RMS in dBFS).
 
     \b
-    Esempio: agency audio test --duration 10
+    Esempio: gweb audio test --duration 10
     """
     if not c().json:
         click.echo(f"Registrazione di prova per {duration}s: parla nel microfono...")
@@ -247,7 +247,7 @@ Il login Google richiede un browser: si fa sul Mac, poi si trasferisce la sessio
    rm ~/.notebooklm/profiles/default/storage_state.json
 
 5) Sul Raspberry, verifica (sola lettura):
-   agency notebook status
+   gweb notebook status
 
 Destinazione sul Raspberry: {path} (permessi 0600)
 """
@@ -279,7 +279,7 @@ def notebook_login(import_src, token_src, browser, remove_source):
     \b
     Senza opzioni mostra la procedura completa Mac → Raspberry.
     Esempio (dal Mac):
-      ssh pi@raspberrypi.local '~/agency-briefing/.venv/bin/agency notebook login --import -' \\
+      ssh pi@raspberrypi.local '~/agency-briefing/.venv/bin/gweb notebook login --import -' \\
           < ~/.notebooklm/profiles/default/storage_state.json
     """
     app = c().app
@@ -324,7 +324,7 @@ def notebook_login(import_src, token_src, browser, remove_source):
         sys.exit(rc)
     from ..notebook.notebooklm_py import LIBRARY_VERSION
 
-    exe = Path(sys.argv[0]).resolve() if sys.argv[0] else "agency"
+    exe = Path(sys.argv[0]).resolve() if sys.argv[0] else "gweb"
     text = MAC_INSTRUCTIONS.format(lib=LIBRARY_VERSION, user=getpass.getuser(),
                                    host=socket.gethostname() + ".local", exe=exe,
                                    path=app.cfg.storage_state_path)
@@ -397,7 +397,7 @@ def notebook_current():
     """Mostra il notebook predefinito."""
     data = c().app.notebook_current()
     if data is None and not c().json:
-        out.warn("Nessun notebook predefinito: agency notebook select")
+        out.warn("Nessun notebook predefinito: gweb notebook select")
         sys.exit(ExitCode.NOT_FOUND)
     emit(data, lambda d: out.kv([("id", d["id"]), ("titolo", d["title"]),
                                  ("scelto il", out.local_time(d["selected_at"]))]))
@@ -446,7 +446,7 @@ def record_start(title, nb, no_wait):
     """Avvia una registrazione in background (continua anche chiudendo SSH).
 
     \b
-    Esempio: agency record start --title "Briefing nuovo sito" --notebook NOTEBOOK_ID
+    Esempio: gweb record start --title "Briefing nuovo sito" --notebook NOTEBOOK_ID
     """
     data = c().app.record_start(title, nb, wait=not no_wait)
 
@@ -454,7 +454,7 @@ def record_start(title, nb, no_wait):
         r = d["recording"]
         out.ok(f"Registrazione {r['id']} «{r['title']}»: {out.rec_state(r['state'])}")
         click.echo(f"  notebook: {r['notebook_title'] or r['notebook_id'] or '-'}")
-        click.echo("  stato: agency record status · arresto: agency record stop")
+        click.echo("  stato: gweb record status · arresto: gweb record stop")
         for w in d["warnings"]:
             out.warn(w)
 
@@ -504,8 +504,8 @@ def record_stop(wait_final):
                f"durata {out.duration(r['duration_seconds'])}")
         for w in d["warnings"]:
             out.warn(w)
-        click.echo(f"  dettagli: agency recordings show {r['id']}")
-        click.echo(f"  caricamento: agency recordings upload {r['id']}")
+        click.echo(f"  dettagli: gweb recordings show {r['id']}")
+        click.echo(f"  caricamento: gweb recordings upload {r['id']}")
 
     emit(data, human)
 
@@ -568,8 +568,8 @@ def recordings_upload(recording_id, nb, wait):
 
     \b
     Esempi:
-      agency recordings upload r261102-153012-a1b2
-      agency recordings upload r261102-153012-a1b2 --notebook NOTEBOOK_ID
+      gweb recordings upload r261102-153012-a1b2
+      gweb recordings upload r261102-153012-a1b2 --notebook NOTEBOOK_ID
     """
     data = c().app.recordings_upload(recording_id, nb, wait=wait)
 
@@ -578,7 +578,7 @@ def recordings_upload(recording_id, nb, wait):
         out.ok(f"Lavoro #{j['id']} → notebook {j['notebook_id']}: {j['state']}")
         if j["state"] == "processing":
             click.echo("  Upload completato: la fonte è in elaborazione su NotebookLM.")
-        click.echo("  stato: agency jobs list")
+        click.echo("  stato: gweb jobs list")
         for w in d["warnings"]:
             out.warn(w)
 
@@ -594,7 +594,7 @@ def recordings_import(path, title, nb):
     """Importa un audio esistente (MP3/M4A senza conversione; altri formati codificati).
 
     \b
-    Esempio: agency recordings import /percorso/audio.wav --title "Briefing esterno"
+    Esempio: gweb recordings import /percorso/audio.wav --title "Briefing esterno"
     """
     data = c().app.recordings_import(path, title, nb)
     emit(data, lambda d: (out.ok(f"Importata {d['recording']['id']}"),
@@ -616,9 +616,9 @@ def recordings_prune(yes, min_age_days, mode):
 
     \b
     Esempi:
-      agency recordings prune                 # simulazione: cosa verrebbe eliminato
-      agency recordings prune --yes
-      agency recordings prune --yes --mode segments --min-age-days 0
+      gweb recordings prune                 # simulazione: cosa verrebbe eliminato
+      gweb recordings prune --yes
+      gweb recordings prune --yes --mode segments --min-age-days 0
     """
     data = c().app.recordings_prune(execute=yes, min_age_days=min_age_days, mode=mode)
 
@@ -635,7 +635,7 @@ def recordings_prune(yes, min_age_days, mode):
             for i in d["skipped"]:
                 click.echo(f"  {i['recording_id']}  {i['title']}  — {i['reason']}")
         if not yes and todo:
-            click.echo("Per eseguire: agency recordings prune --yes")
+            click.echo("Per eseguire: gweb recordings prune --yes")
         click.echo(f"Spazio libero: {d['disk_free_mb']} MB")
 
     emit(data, human)
@@ -699,7 +699,7 @@ def jobs_cancel(job_id):
 
 @jobs.command("resolve")
 @click.argument("job_id", type=int)
-@click.option("--source-id", help="La fonte esiste: indica il suo ID (agency notebook sources).")
+@click.option("--source-id", help="La fonte esiste: indica il suo ID (gweb notebook sources).")
 @click.option("--not-uploaded", is_flag=True, help="Verificato che la fonte NON esiste.")
 @json_option
 def jobs_resolve(job_id, source_id, not_uploaded):
@@ -740,7 +740,7 @@ def ask(question, nb, recording, sources):
     """Fa una domanda al notebook e mostra risposta e citazioni.
 
     \b
-    Esempio: agency ask --notebook NOTEBOOK_ID "Quali decisioni sono state prese?"
+    Esempio: gweb ask --notebook NOTEBOOK_ID "Quali decisioni sono state prese?"
     Nota: la domanda si aggiunge alla conversazione corrente del notebook.
     """
     data = c().app.ask(question, nb, recording=recording, sources=list(sources))
@@ -817,7 +817,7 @@ def service_logs(lines, follow):
     argv = systemd.logs_command(app.cfg.get("service.unit_name"), lines, follow)
     if argv and systemd.systemctl_available():
         sys.exit(subprocess.call(argv))
-    log_file = app.cfg.log_dir / "agency.log"
+    log_file = app.cfg.log_dir / "gweb.log"
     if not log_file.exists():
         raise UsageError("Nessun log disponibile", hint=str(log_file))
     sys.exit(subprocess.call(["tail", "-n", str(lines)] + (["-f"] if follow else [])
@@ -888,7 +888,7 @@ def service_run():
 def main(argv: list[str] | None = None) -> None:
     json_mode = "--json" in (argv if argv is not None else sys.argv[1:])
     try:
-        cli.main(args=argv, standalone_mode=False, prog_name="agency")
+        cli.main(args=argv, standalone_mode=False, prog_name="gweb")
     except click.exceptions.Abort:
         click.echo("Annullato.", err=True)
         sys.exit(130)
