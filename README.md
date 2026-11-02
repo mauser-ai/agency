@@ -20,37 +20,71 @@ Documentazione: [architettura](docs/architecture.md) · [comandi](docs/commands.
 
 ## Installazione sul Raspberry
 
+Tutti i comandi di questa sezione vanno eseguiti **sul Raspberry**, collegato via SSH
+dal Mac (sostituisci utente e host con i tuoi):
+
 ```bash
-ssh pi@raspberrypi.local            # sostituisci utente/host
-./scripts/inspect-pi.sh              # (facoltativo) ispezione in sola lettura, dopo il clone
+ssh pi@raspberrypi.local
+```
+
+### 1. Scaricare il progetto
+
+La repository è privata: il Pi deve autenticarsi su GitHub una volta. Il modo più
+semplice è la GitHub CLI con il codice dispositivo (il codice si conferma dal browser del
+Mac, nessuna password sul Pi):
+
+```bash
+sudo apt-get install -y gh
 ```
 
 ```bash
-git clone https://github.com/mauser-ai/agency-briefing.git ~/agency-briefing
+gh auth login --hostname github.com --git-protocol https --web
 ```
+
+```bash
+gh repo clone mauser-ai/agency-briefing ~/agency-briefing
+```
+
+In alternativa: una *deploy key* SSH di sola lettura (GitHub → repository → Settings →
+Deploy keys) e `git clone git@github.com:mauser-ai/agency-briefing.git ~/agency-briefing`.
+
+### 2. Ispezione (facoltativa, sola lettura)
 
 ```bash
 cd ~/agency-briefing && ./scripts/inspect-pi.sh | tee ~/gweb-inspect.txt
 ```
 
+Mostra modello, RAM, architettura, sistema, Python, spazio, schede audio e strumenti
+installati, senza modificare nulla.
+
+### 3. Pacchetti di sistema
+
+Solo quelli necessari, nessun aggiornamento generale:
+
 ```bash
 sudo apt-get install -y --no-install-recommends alsa-utils ffmpeg python3-venv
 ```
+
+### 4. Installazione del programma e del servizio
 
 ```bash
 ./scripts/install.sh
 ```
 
+`install.sh` crea `.venv`, installa il pacchetto, collega `~/.local/bin/gweb`, crea
+`~/.config/gweb/config.toml` se assente (non sovrascrive), installa e avvia il servizio
+utente `gweb.service` ed esegue `gweb doctor`. È ripetibile senza danni.
+
+### 5. Avvio automatico al boot
+
+Unico comando con sudo, una volta sola: fa partire il servizio anche senza login e lo
+tiene attivo quando chiudi SSH.
+
 ```bash
 sudo loginctl enable-linger "$USER"
 ```
 
-`install.sh` crea `.venv`, installa il pacchetto in modalità modificabile, collega
-`~/.local/bin/gweb`, crea `~/.config/gweb/config.toml` se assente (non sovrascrive),
-installa e avvia il servizio utente `gweb.service`, esegue `gweb doctor`.
-`enable-linger` (unico comando con sudo) fa partire il servizio al boot senza login.
-
-Verifica:
+### 6. Verifica del microfono
 
 ```bash
 gweb doctor
@@ -64,8 +98,40 @@ gweb audio devices
 gweb audio test --duration 10
 ```
 
-Se `~/.local/bin` non è nel PATH (sessioni non di login), usa
-`~/agency-briefing/.venv/bin/gweb`.
+Se c'è più di una scheda audio o la scelta automatica non è quella giusta, fissa il
+microfono con il suo ID scheda (colonna `ID SCHEDA`):
+
+```bash
+gweb audio select Device
+```
+
+Se `gweb` non viene trovato (sessioni SSH non di login), apri una nuova sessione oppure usa
+il percorso completo `~/agency-briefing/.venv/bin/gweb`.
+
+### 7. Configurazione (facoltativa)
+
+Il file è `~/.config/gweb/config.toml` (esempio commentato completo:
+`examples/config.example.toml`). Funziona già con i valori predefiniti; le opzioni che
+più probabilmente vorrai cambiare:
+
+| Sezione | Chiave | Default | A cosa serve |
+|---|---|---|---|
+| `[upload]` | `auto_after_stop` | `false` | `true` = carica su NotebookLM appena fermi la registrazione |
+| `[cleanup]` | `enabled` | `false` | `true` = pulizia settimanale dell'audio già pronto su NotebookLM |
+| `[cleanup]` | `mode` | `"all"` | `"segments"` = tiene l'M4A, elimina solo i WAV |
+| `[recording]` | `max_duration_minutes` | `240` | arresto automatico di sicurezza |
+| `[recording]` | `min_free_mb` | `500` | spazio minimo per avviare; per briefing di 2 ore usa almeno `2000` |
+| `[encoding]` | `bitrate` | `"96k"` | `"64k"` per file più piccoli con connessioni lente |
+
+Dopo ogni modifica, applica e controlla:
+
+```bash
+gweb service install
+```
+
+```bash
+gweb config show
+```
 
 ## Login NotebookLM dal Mac (via SSH)
 
