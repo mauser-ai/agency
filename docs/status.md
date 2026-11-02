@@ -9,7 +9,35 @@ Raspberry Pi: la sessione SSH sul Pi non era ancora disponibile. Tutto ciò che 
 dall'hardware o dall'account Google è quindi **non verificato** finché non lo si esegue sul
 dispositivo (vedi "Da verificare sul Raspberry").
 
-## Completato e verificato (test automatici: `pytest`, 33 test, ~25 s)
+## Verificato sul Raspberry reale (2026-11-02)
+Dispositivo: **Raspberry Pi 4 Model B Rev 1.5, 4 GB (3,7 GiB), aarch64, userland 64 bit**,
+Debian 13 trixie (kernel 6.18 rpt), Python 3.13.5, `vcgencmd get_throttled` = 0x0,
+SD 115 GB (87 GB liberi). Utente `riccardo` (non `pi`), host `DartsVision`, raggiunto via
+`dartsvision.local`: `raspberrypi.local` non risolve su questa rete.
+- `./scripts/inspect-pi.sh`: ok. `arecord`, `ffmpeg`/`ffprobe` (encoder `aac`), `sox`,
+  systemd presenti; `uv`/`pipx` assenti (non necessari). Utente nel gruppo `audio`.
+- `./scripts/install.sh`: ok e ripetibile (venv, `~/.local/bin/gweb`, config mantenuta,
+  servizio riscritto e riavviato). Nessun `sudo` necessario: pacchetti già presenti e
+  `Linger=yes` già attivo.
+- `gweb.service` utente: attivo, abilitato, heartbeat del demone ok dopo il riavvio.
+- `gweb doctor`: tutto ✓ tranne microfono (✗, exit 1) e sessione NotebookLM (assente).
+- `pytest` sul Pi: 43 test passati in ~55 s; `ruff` pulito.
+- **Microfono: nessuno collegato.** `arecord -l` vuoto, `lsusb` mostra solo tastiera e
+  mouse; le uniche schede ALSA sono HDMI ×2 e jack cuffie (solo riproduzione).
+  `gweb audio devices` → nessun elemento; `gweb audio test --duration 10` → exit 9
+  `DEVICE_ERROR` con indicazione corretta. Il test di cattura reale resta da fare.
+
+Correzioni emerse sul Pi:
+- **Permessi dei dati**: con l'umask utente di Debian (0002) i comandi CLI creavano le
+  directory dati/stato 0775 e il DB nasceva 0644 prima del `chmod`, così `gweb.db-wal` e
+  `gweb.db-shm` (che contengono i dati) restavano 0644. Ora `ensure_dirs` crea tutte le
+  directory 0700 e il DB nasce 0600 (SQLite eredita i permessi per WAL/SHM); i file
+  esistenti vengono corretti all'apertura. Verificato sul Pi dopo il riavvio: directory
+  0700, `gweb.db*` 0600. Test: `test_data_dirs_and_db_files_private_with_permissive_umask`.
+- `gweb audio test` stampava "parla nel microfono..." anche senza microfono: ora il
+  messaggio compare solo dopo aver risolto il dispositivo e indica quale (`plughw:...`).
+
+## Completato e verificato (test automatici: `pytest`, 43 test, ~25 s x86 / ~55 s Pi 4)
 - Configurazione TOML con default, validazione di chiavi e tipi, `config init/show/path`.
 - Scoperta microfono da `/proc/asound` (finto) per **ID scheda**, `auto` = primo USB,
   errore operativo se assente.
@@ -51,7 +79,6 @@ Prova manuale end-to-end eseguita (backend fake, arecord simulato): `service run
 ## NON verificato (richiede il Raspberry o l'account)
 | Cosa | Come verificarlo |
 |---|---|
-| Modello, RAM, architettura (32/64 bit), OS e Python del Pi | `./scripts/inspect-pi.sh`, `gweb doctor` |
 | `arecord` reale col microfono USB, formati supportati, nome della scheda | `gweb audio devices`, `gweb audio test --duration 10` |
 | Riconnessione con scollegamento fisico dell'USB | registra, scollega 10 s, ricollega, `gweb recordings show ID` (eventi) |
 | Tempo di codifica AAC sul Pi 4 per registrazioni lunghe | `gweb record stop --wait-final` dopo 30–60 min |
@@ -81,8 +108,10 @@ Prova manuale end-to-end eseguita (backend fake, arecord simulato): `service run
   riscaricabile (non verificato).
 
 ## Prossimi passi
-1. Collegarsi al Pi: `./scripts/inspect-pi.sh`, `./scripts/install.sh`, `gweb doctor`.
-2. `gweb audio test --duration 10`, scegliere il microfono se serve.
+1. ~~Collegarsi al Pi: `./scripts/inspect-pi.sh`, `./scripts/install.sh`, `gweb doctor`.~~
+   Fatto il 2026-11-02 (vedi sopra).
+2. **Collegare un microfono USB** (oggi assente), poi `gweb audio devices` e
+   `gweb audio test --duration 10`; scegliere il microfono se serve.
 3. Login dal Mac, `gweb notebook status`, `gweb notebook list` (sola lettura).
 4. Prova di registrazione reale breve; upload su un notebook di prova **solo dopo conferma**.
 5. Aggiornare questo file con gli esiti reali (formato accettato, tempi di elaborazione).

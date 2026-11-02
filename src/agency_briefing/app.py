@@ -133,7 +133,7 @@ class AgencyApp:
         pcm, _ = resolve_device(spec)
         return {"device": spec, "resolved": pcm}
 
-    def audio_test(self, duration: int) -> dict:
+    def audio_test(self, duration: int, on_start=None) -> dict:
         if not 1 <= duration <= 120:
             raise UsageError("La durata deve essere tra 1 e 120 secondi")
         active = self.store.active()
@@ -146,6 +146,8 @@ class AgencyApp:
         argv = build_capture_argv(a["capture_command"], pcm, sample_format=a["sample_format"],
                                   channels=int(a["channels"]), rate=int(a["sample_rate"]),
                                   segment_seconds=None, output=out, duration=duration)
+        if on_start:
+            on_start(pcm)
         res = run_capture_once(argv, timeout=duration + 20)
         if res.returncode != 0 or not out.exists():
             raise DeviceError(f"Test di registrazione fallito (codice {res.returncode}): "

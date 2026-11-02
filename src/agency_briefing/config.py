@@ -196,9 +196,8 @@ class Config:
 
     def ensure_dirs(self) -> None:
         for path in (self.data_dir, self.recordings_dir, self.summaries_dir, self.state_dir,
-                     self.log_dir, self.tests_dir):
-            path.mkdir(parents=True, exist_ok=True)
-        secure_mkdir(self.credentials_dir)
+                     self.log_dir, self.tests_dir, self.credentials_dir):
+            secure_mkdir(path)
 
     def validate(self) -> None:
         fmt = self.data["encoding"]["upload_format"]
@@ -224,7 +223,7 @@ class Config:
 
 
 def secure_mkdir(path: Path) -> None:
-    """Crea una directory con permessi 0700 (credenziali)."""
+    """Crea una directory con permessi 0700 (dati, audio, credenziali)."""
     path.mkdir(parents=True, exist_ok=True)
     try:
         os.chmod(path, 0o700)

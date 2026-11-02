@@ -209,9 +209,11 @@ def audio_test(duration):
     \b
     Esempio: gweb audio test --duration 10
     """
-    if not c().json:
-        click.echo(f"Registrazione di prova per {duration}s: parla nel microfono...")
-    data = c().app.audio_test(duration)
+    def announce(pcm):
+        if not c().json:
+            click.echo(f"Registrazione di prova per {duration}s da {pcm}: parla nel microfono...")
+
+    data = c().app.audio_test(duration, on_start=announce)
 
     def human(d):
         out.kv([("file", d["file"]), ("dispositivo", d["device"]),

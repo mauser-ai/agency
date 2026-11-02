@@ -10,6 +10,7 @@ Scelte:
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 import threading
 from collections.abc import Iterator
@@ -156,6 +157,9 @@ class Database:
         self.path = path
         self._local = threading.local()
         path.parent.mkdir(parents=True, exist_ok=True)
+        # SQLite crea -wal/-shm con i permessi del DB: il file deve nascere 0600,
+        # altrimenti con umask 0002 il WAL (che contiene i dati) resta leggibile da tutti.
+        os.close(os.open(path, os.O_CREAT | os.O_WRONLY, 0o600))
         self._init_schema()
 
     def connect(self) -> sqlite3.Connection:
@@ -193,10 +197,11 @@ class Database:
         elif int(row["value"]) > SCHEMA_VERSION:
             raise RuntimeError(
                 f"Database creato da una versione più recente (schema {row['value']})")
-        try:
-            self.path.chmod(0o600)
-        except OSError:
-            pass
+        for p in (self.path, Path(f"{self.path}-wal"), Path(f"{self.path}-shm")):
+            try:
+                p.chmod(0o600)
+            except OSError:
+                pass
 
     @contextmanager
     def tx(self) -> Iterator[sqlite3.Connection]:

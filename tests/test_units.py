@@ -1,3 +1,5 @@
+import os
+import stat
 import struct
 
 import pytest
@@ -6,6 +8,7 @@ from agency_briefing.audio.capture import list_segment_files
 from agency_briefing.audio.devices import list_capture_devices, resolve_device
 from agency_briefing.audio.wav import analyze_levels, read_wav_info, repair_wav, write_wav_header
 from agency_briefing.config import load_config
+from agency_briefing.db import Database
 from agency_briefing.errors import ConfigError, DeviceError
 from agency_briefing.logging_setup import redact
 from agency_briefing.notebook.base import SourceInfo, source_matches_recording
@@ -124,3 +127,24 @@ def test_exception_mapping():
     assert isinstance(map_exception(nlm.NetworkError("x")), TransientRemoteError)
     assert isinstance(map_exception(nlm.NetworkError("x"), during_upload=True), UncertainUpload)
     assert isinstance(map_exception(TimeoutError(), during_upload=True), UncertainUpload)
+
+
+def test_data_dirs_and_db_files_private_with_permissive_umask(tmp_path, monkeypatch):
+    # Debian/Raspberry Pi OS: umask utente 0002. Verificato sul Pi: il WAL nasceva 0644.
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    old = os.umask(0o002)
+    try:
+        cfg = load_config(tmp_path / "missing.toml")
+        cfg.ensure_dirs()
+        db = Database(cfg.data_dir / "gweb.db")
+        db.connect().execute("INSERT OR REPLACE INTO meta(key, value) VALUES('x', 'y')")
+    finally:
+        os.umask(old)
+    for d in (cfg.data_dir, cfg.recordings_dir, cfg.summaries_dir, cfg.state_dir):
+        assert stat.S_IMODE(d.stat().st_mode) == 0o700, d
+    for suffix in ("", "-wal", "-shm"):
+        p = cfg.data_dir / f"gweb.db{suffix}"
+        assert stat.S_IMODE(p.stat().st_mode) == 0o600, p
+    db.close()
