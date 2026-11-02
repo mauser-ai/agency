@@ -96,6 +96,19 @@ def test_wav_repair_and_levels(tmp_path):
     assert -31 < lv.peak_dbfs < -30 and lv.verdict == "ok"
 
 
+def test_levels_skip_codec_startup_click(tmp_path):
+    # WM8960 sul Pi: un campione a fondo scala nei primi ms, poi rumore a -30 dBFS.
+    p = _wav(tmp_path / "click.wav", seconds=2.0)
+    with open(p, "r+b") as fh:
+        fh.seek(44)
+        fh.write(struct.pack("<h", 32767))
+    assert analyze_levels(p).verdict.startswith("possibile saturazione")
+    lv = analyze_levels(p, skip_seconds=0.5)
+    assert -31 < lv.peak_dbfs < -30 and lv.verdict == "ok"
+    assert abs(lv.duration_seconds - 2.0) < 1e-6
+    assert analyze_levels(p, skip_seconds=5).peak_dbfs > -1  # file troppo corto: niente salto
+
+
 def test_segment_natural_order(tmp_path):
     for name in ["part002.wav", "part001-10.wav", "part001-02.wav", "part001-01.wav", "x.wav"]:
         (tmp_path / name).write_bytes(b"")

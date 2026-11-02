@@ -118,17 +118,24 @@ def _db(value: float, full_scale: float) -> float:
     return 20 * math.log10(value / full_scale) if value > 0 else -120.0
 
 
-def analyze_levels(path: Path) -> Levels:
-    """Picco e RMS in dBFS per WAV PCM 16 bit (formato usato dal registratore)."""
+def analyze_levels(path: Path, skip_seconds: float = 0.0) -> Levels:
+    """Picco e RMS in dBFS per WAV PCM 16 bit (formato usato dal registratore).
+
+    ``skip_seconds`` esclude l'inizio del file: alcuni codec (WM8960 sugli HAT I2S)
+    producono un click di accensione a fondo scala che falserebbe il picco.
+    """
     info = read_wav_info(path)
     if info.bits_per_sample != 16:
         raise ValueError("Analisi livelli supportata solo per PCM 16 bit")
+    skip = int(skip_seconds * info.sample_rate) * info.block_align
+    if skip >= info.data_size_actual:
+        skip = 0
     peak = 0
     sq = 0.0
     count = 0
     with open(path, "rb") as fh:
-        fh.seek(info.data_offset)
-        remaining = info.data_size_actual
+        fh.seek(info.data_offset + skip)
+        remaining = info.data_size_actual - skip
         while remaining > 0:
             buf = fh.read(min(remaining, 1 << 16))
             if not buf:

@@ -154,7 +154,7 @@ class AgencyApp:
                               f"{res.stderr.strip()[-400:]}",
                               hint="Verifica il dispositivo con 'gweb audio devices'; "
                                    "'Device or resource busy' = microfono in uso.")
-        levels = analyze_levels(out)
+        levels = analyze_levels(out, skip_seconds=0.5)
         return {"file": str(out), "device": pcm, "bytes": out.stat().st_size,
                 "sample_rate": a["sample_rate"], "channels": a["channels"],
                 **levels.to_dict()}

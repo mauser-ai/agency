@@ -20,19 +20,23 @@ SD 115 GB (87 GB liberi). Utente `riccardo` (non `pi`), host `DartsVision`, ragg
   servizio riscritto e riavviato). Nessun `sudo` necessario: pacchetti già presenti e
   `Linger=yes` già attivo.
 - `gweb.service` utente: attivo, abilitato, heartbeat del demone ok dopo il riavvio.
-- `gweb doctor`: tutto ✓ tranne microfono (✗, exit 1) e sessione NotebookLM (assente).
-- `pytest` sul Pi: 44 test passati in ~55 s; `ruff` pulito.
-- **Microfono: nessuno funzionante.** Nessun microfono USB (`lsusb`: solo tastiera e
-  mouse). Il microfono previsto è un **HAT I2S Keyestudio 2-Mic Pi HAT V1.0** (clone del
-  ReSpeaker 2-Mic v1.0, codec WM8960 a 0x1a su i2c-1; `dtoverlay=wm8960-soundcard` già in
-  `/boot/firmware/config.txt`). All'avvio il driver fallisce
-  (`wm8960 1-001a: Failed to issue reset … error -5`) e una scansione di i2c-1 non trova
-  **nessun** dispositivo, anche dopo tre rimontaggi a Pi spento: SDA/SCL configurati
-  correttamente (ALT0, pull-up, livello alto), quindi guasto o contatto dell'HAT.
-  `~/test_mic.wav` del 2026-09-28 (2 canali, 16 kHz, picco 0 dBFS) mostra che l'HAT
-  funzionava in passato. Le uniche schede ALSA oggi sono HDMI ×2 e jack (solo
-  riproduzione): `gweb audio devices` → nessun elemento, `gweb audio test --duration 10`
-  → exit 9 `DEVICE_ERROR`. **Il test di cattura reale resta da fare.**
+- `gweb doctor`: tutto ✓ (microfono compreso) tranne la sessione NotebookLM (assente:
+  login dal Mac non ancora fatto).
+- `pytest` sul Pi: 45 test passati in ~55 s; `ruff` pulito.
+- **Microfono: HAT I2S Keyestudio 2-Mic Pi HAT V1.0** (clone del ReSpeaker 2-Mic v1.0,
+  codec WM8960 a 0x1a su i2c-1, `dtoverlay=wm8960-soundcard` in
+  `/boot/firmware/config.txt`; nessun microfono USB). Scheda ALSA `wm8960soundcard`,
+  PCM `plughw:CARD=wm8960soundcard,DEV=0`, scelta da `auto` senza configurazione.
+  Mixer di default: `Capture` 63/63 (+30 dB), boost di ingresso +20 dB.
+- `gweb audio test --duration 10`: **ok**, 48 kHz mono via `plughw`; due prove: picco
+  −14,7 / RMS −35,4 dBFS e picco −26,7 / RMS −40,5 dBFS (stanza, senza misura del parlato). Verificato anche dopo un
+  riavvio a freddo (2026-11-02 19:03): codec, scheda, `gweb doctor` (microfono ✓,
+  servizio e demone ✓) senza interventi manuali.
+- Problema incontrato: per alcuni avvii il codec non rispondeva su I2C
+  (`wm8960 1-001a: Failed to issue reset … error -5`, scansione di i2c-1 vuota) per un
+  contatto dell'HAT non inserito bene; dopo il rimontaggio risponde. Se ricapita senza
+  voler riavviare: `echo 1-001a | sudo tee /sys/bus/i2c/drivers/wm8960/bind` crea la
+  scheda (il probe differito della `simple-audio-card` riparte da solo).
 - Rimosso dal Pi un kiosk preesistente (Chromium a schermo intero al login, progetto
   "7 Campanili") che bloccava il desktop: non riguarda gweb, nessun impatto sul servizio.
 
@@ -45,13 +49,15 @@ Correzioni emerse sul Pi:
   0700, `gweb.db*` 0600. Test: `test_data_dirs_and_db_files_private_with_permissive_umask`.
 - `gweb audio test` stampava "parla nel microfono..." anche senza microfono: ora il
   messaggio compare solo dopo aver risolto il dispositivo e indica quale (`plughw:...`).
-- `audio.device = "auto"` accettava solo microfoni USB, quindi avrebbe ignorato l'HAT
-  I2S: ora preferisce l'USB e, se assente, usa la prima scheda di cattura (es.
-  `plughw:CARD=wm8960soundcard,DEV=0`). Test con `/proc/asound` finto ricavato dalla
-  configurazione del Pi; **non ancora provato con l'HAT funzionante** (canali, guadagno
-  del mixer WM8960 e frequenza da verificare con `gweb audio test`).
+- `audio.device = "auto"` accettava solo microfoni USB, quindi ignorava l'HAT I2S: ora
+  preferisce l'USB e, se assente, usa la prima scheda di cattura. Verificato sul Pi con
+  l'HAT (`auto → plughw:CARD=wm8960soundcard,DEV=0`).
+- `audio test` segnalava "possibile saturazione" per il click di accensione del WM8960
+  (un solo campione a fondo scala nei primi millisecondi; il resto a −27/−30 dBFS di
+  picco): l'analisi dei livelli del test ora esclude i primi 0,5 s. Test:
+  `test_levels_skip_codec_startup_click`.
 
-## Completato e verificato (test automatici: `pytest`, 44 test, ~25 s x86 / ~55 s Pi 4)
+## Completato e verificato (test automatici: `pytest`, 45 test, ~25 s x86 / ~55 s Pi 4)
 - Configurazione TOML con default, validazione di chiavi e tipi, `config init/show/path`.
 - Scoperta microfono da `/proc/asound` (finto) per **ID scheda**, `auto` = primo USB,
   errore operativo se assente.
@@ -93,7 +99,6 @@ Prova manuale end-to-end eseguita (backend fake, arecord simulato): `service run
 ## NON verificato (richiede il Raspberry o l'account)
 | Cosa | Come verificarlo |
 |---|---|
-| `arecord` reale col microfono USB, formati supportati, nome della scheda | `gweb audio devices`, `gweb audio test --duration 10` |
 | Riconnessione con scollegamento fisico dell'USB | registra, scollega 10 s, ricollega, `gweb recordings show ID` (eventi) |
 | Tempo di codifica AAC sul Pi 4 per registrazioni lunghe | `gweb record stop --wait-final` dopo 30–60 min |
 | systemd utente, linger, avvio al boot, `service logs` | `gweb service install`, `sudo reboot`, `gweb service status` |
@@ -124,10 +129,9 @@ Prova manuale end-to-end eseguita (backend fake, arecord simulato): `service run
 ## Prossimi passi
 1. ~~Collegarsi al Pi: `./scripts/inspect-pi.sh`, `./scripts/install.sh`, `gweb doctor`.~~
    Fatto il 2026-11-02 (vedi sopra).
-2. **Microfono funzionante**: sostituire o riparare l'HAT (il codec non risponde su
-   I2C) oppure collegare un microfono USB; poi `arecord -l`, `gweb audio devices`,
-   `gweb audio test --duration 10`. Con l'HAT, se l'esito è "silenzio", attivare la
-   cattura nel mixer (`alsamixer -c wm8960soundcard`, F4) e salvare con `alsactl store`.
+2. ~~`gweb audio test --duration 10`~~ fatto con l'HAT (vedi sopra). Da valutare in una
+   registrazione vera se il guadagno al massimo (+30 dB) dà rumore di fondo eccessivo
+   (`alsamixer -c wm8960soundcard`, poi `sudo alsactl store`).
 3. Login dal Mac, `gweb notebook status`, `gweb notebook list` (sola lettura).
 4. Prova di registrazione reale breve; upload su un notebook di prova **solo dopo conferma**.
 5. Aggiornare questo file con gli esiti reali (formato accettato, tempi di elaborazione).
