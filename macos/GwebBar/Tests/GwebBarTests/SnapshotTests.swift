@@ -41,7 +41,7 @@ final class SnapshotTests: XCTestCase {
     }
 
     private func render<V: View>(_ view: V, _ name: String, appearance: NSAppearance) throws {
-        let host = NSHostingView(rootView: view.background(Color(nsColor: .windowBackgroundColor)))
+        let host = NSHostingView(rootView: view.padding(name.hasPrefix("6-") ? 12 : 0).background(Color(nsColor: name.hasPrefix("6-") ? .systemTeal : .windowBackgroundColor)))
         host.appearance = appearance
         host.frame = NSRect(origin: .zero, size: host.fittingSize)
         let window = NSWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
@@ -65,6 +65,10 @@ final class SnapshotTests: XCTestCase {
         m.session = try JSONDecoder().decode(SessionSummary.self, from: Data(
             #"{"state": "expired", "account": "sacchetto.riccardo@gmail.com", "blocked_jobs": 1}"#.utf8))
         try render(m, "4-session-expired")
+    }
+
+    func testPanel() throws {
+        try render(PanelChrome { PopoverView(model: model(.idle)) }, "6-panel")
     }
 
     func testSettings() throws {

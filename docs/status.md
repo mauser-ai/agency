@@ -82,6 +82,10 @@ SD 115 GB (87 GB liberi). Utente `riccardo` (non `pi`), host `DartsVision`, ragg
   `-o ControlMaster=no` e risultato alla fine del processo, non alla chiusura delle pipe
   (test di regressione). Diagnostica in `~/Library/Logs/GwebBar.log`. Verificato: CPU 0%,
   primo stato ricevuto 1 s dopo l'avvio; 18 test Swift + test reali (`GWEBBAR_LIVE`).
+  Interfaccia diventata un pannello a tendina sotto la barra (stile Fathom: `NSPanel` senza
+  bordi, materiale dei menu, angoli arrotondati), aperto da icona, scorciatoia globale ⌥⌘B
+  (Carbon, senza permessi), avvio e riapertura; ancorato all'icona se visibile, altrimenti in
+  alto a destra. Verificato sul Mac: pannello a y=39 sotto la barra, CPU 0,6%.
 - Rimosso dal Pi un kiosk preesistente (Chromium a schermo intero al login, progetto
   "7 Campanili") che bloccava il desktop: non riguarda gweb, nessun impatto sul servizio.
 
