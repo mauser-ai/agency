@@ -20,8 +20,15 @@ SD 115 GB (87 GB liberi). Utente `riccardo` (non `pi`), host `DartsVision`, ragg
   servizio riscritto e riavviato). Nessun `sudo` necessario: pacchetti già presenti e
   `Linger=yes` già attivo.
 - `gweb.service` utente: attivo, abilitato, heartbeat del demone ok dopo il riavvio.
-- `gweb doctor`: tutto ✓ (microfono compreso) tranne la sessione NotebookLM (assente:
-  login dal Mac non ancora fatto).
+- `gweb doctor`: tutto ✓, microfono e sessione NotebookLM compresi.
+- **Login NotebookLM** (2026-11-02): fatto sul Mac (macOS 26, notebooklm-py 0.8.6,
+  `notebooklm login --browser chrome`), sessione importata con
+  `ssh raspberry 'gweb notebook login --import -' < storage_state.json` → file 0600 in
+  directory 0700, copia sul Mac eliminata. `gweb notebook status`: sessione valida,
+  15 notebook, keepalive ok; `gweb notebook list`: ok (sola lettura). Nessun upload
+  ancora. Nota: il primo tentativo di login ha salvato una sessione non collegata
+  ("authuser=0 did not return a signed-in account"): `notebooklm list` sul Mac lo rivela
+  prima dell'import (aggiunto al README).
 - `pytest` sul Pi: 46 test passati in ~55 s; `ruff` pulito.
 - **Microfono: HAT I2S Keyestudio 2-Mic Pi HAT V1.0** (clone del ReSpeaker 2-Mic v1.0,
   codec WM8960 a 0x1a su i2c-1, `dtoverlay=wm8960-soundcard` in
@@ -110,8 +117,7 @@ Prova manuale end-to-end eseguita (backend fake, arecord simulato): `service run
 | Riconnessione con scollegamento fisico dell'USB | registra, scollega 10 s, ricollega, `gweb recordings show ID` (eventi) |
 | Tempo di codifica AAC sul Pi 4 per registrazioni lunghe | `gweb record stop --wait-final` dopo 30–60 min |
 | systemd utente, linger, avvio al boot, `service logs` | `gweb service install`, `sudo reboot`, `gweb service status` |
-| Login dal Mac e import della sessione | procedura README, poi `gweb notebook status` |
-| `notebook list/sources`, `ask` con citazioni reali | sola lettura prima |
+| `notebook sources`, `ask` con citazioni reali | sola lettura prima |
 | Upload audio reale, tempi di elaborazione, accettazione M4A da NotebookLM | **solo su tua richiesta esplicita**, su un notebook di prova |
 | Comportamento della rinomina del titolo (`[ID]`) sull'upload reale | `gweb notebook sources` dopo il primo upload |
 | Timer di pulizia settimanale (`gweb-cleanup.timer`) | `cleanup.enabled = true`, `gweb service install`, `systemctl --user list-timers` |
@@ -140,7 +146,7 @@ Prova manuale end-to-end eseguita (backend fake, arecord simulato): `service run
 2. ~~`gweb audio test --duration 10`~~ fatto con l'HAT (vedi sopra); rumore di fondo
    ridotto in codifica. Da verificare su un briefing vero (voci lontane dal microfono,
    più persone) che il filtro non renda la voce metallica.
-3. Login dal Mac, `gweb notebook status`, `gweb notebook list` (sola lettura).
+3. ~~Login dal Mac, `gweb notebook status`, `gweb notebook list`~~ fatto il 2026-11-02.
 4. Prova di registrazione reale breve; upload su un notebook di prova **solo dopo conferma**.
 5. Aggiornare questo file con gli esiti reali (formato accettato, tempi di elaborazione).
 6. Poi: API locale autenticata per l'app Mac; pulsante/LED GPIO.

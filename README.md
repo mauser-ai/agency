@@ -143,10 +143,19 @@ python3 -m venv ~/.venvs/notebooklm
 ~/.venvs/notebooklm/bin/playwright install chromium
 ```
 
-Login (si apre Chromium; completa l'accesso Google, anche 2FA):
+Login (si apre il browser; completa l'accesso Google, anche 2FA, e aspetta la pagina
+principale di NotebookLM: la finestra si chiude da sola). Su macOS 15 o successivi il
+Chromium incluso può bloccarsi: usa Google Chrome con `--browser chrome`.
 
 ```bash
-~/.venvs/notebooklm/bin/notebooklm login
+~/.venvs/notebooklm/bin/notebooklm login --browser chrome
+```
+
+Prima di trasferirla, verifica che la sessione funzioni (deve elencare i tuoi notebook;
+se dice "Authentication expired", ripeti il login):
+
+```bash
+~/.venvs/notebooklm/bin/notebooklm list
 ```
 
 Trasferimento cifrato via SSH, senza file temporanei sul Pi (scritto con permessi 0600):
