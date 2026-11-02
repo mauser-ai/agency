@@ -144,8 +144,8 @@ def test_notebooklm_py_api_surface():
 
     for name in ("list", "get_or_none", "add_file", "wait_until_ready"):
         assert hasattr(SourcesAPI, name), name
-    for name in ("list", "get_or_none"):
-        assert hasattr(NotebooksAPI, name)
+    for name in ("list", "get_or_none", "create"):
+        assert hasattr(NotebooksAPI, name), name
     for exc in ("AuthError", "RateLimitError", "NetworkError", "RPCTimeoutError", "ServerError",
                 "NotFoundError", "ValidationError", "SourceAddError"):
         assert hasattr(nlm, exc), exc

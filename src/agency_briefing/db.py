@@ -19,13 +19,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 # Colonne aggiunte dopo la v1: (tabella, colonna, tipo). Applicate con ALTER TABLE.
 MIGRATIONS = [
     ("recordings", "purged_at", "TEXT"),        # pulizia: quando sono stati eliminati file locali
     ("recordings", "purged_scope", "TEXT"),     # segments | all
     ("recordings", "purged_bytes", "INTEGER"),
+    # upload chiesto durante la finalizzazione: il demone lo accoda appena il file è pronto
+    ("recordings", "upload_on_ready", "INTEGER NOT NULL DEFAULT 0"),
 ]
 
 SCHEMA = """
@@ -67,7 +69,8 @@ CREATE TABLE IF NOT EXISTS recordings (
     error TEXT,
     purged_at TEXT,
     purged_scope TEXT,
-    purged_bytes INTEGER
+    purged_bytes INTEGER,
+    upload_on_ready INTEGER NOT NULL DEFAULT 0
 );
 
 -- Un solo microfono: al massimo una registrazione attiva alla volta.

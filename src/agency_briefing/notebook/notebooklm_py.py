@@ -3,7 +3,9 @@
 API usate (verificate sul pacchetto installato, vedi docs/architecture.md):
 - ``NotebookLMClient.from_storage(path=..., timeout=..., upload_timeout=httpx.Timeout)``
   come async context manager; all'uscita la libreria salva i cookie ruotati.
-- ``client.notebooks.list()`` / ``client.notebooks.get_or_none(id)``
+- ``client.notebooks.list()`` / ``client.notebooks.get_or_none(id)`` /
+  ``client.notebooks.create(title)`` (invio unico; su perdita della risposta l'eccezione
+  è marcata ``unconfirmed``)
 - ``client.sources.list(nb)`` / ``client.sources.get_or_none(nb, sid)``
 - ``client.sources.add_file(nb, path, mime_type, title=...)``: ritorna appena i byte sono
   trasferiti (``wait=False``); lo stato PROCESSING restituito è un segnaposto.
@@ -154,6 +156,9 @@ class _Session(NotebookSession):
     async def get_notebook(self, notebook_id: str) -> NotebookInfo | None:
         n = await self._call(self.client.notebooks.get_or_none(notebook_id))
         return _notebook(n) if n else None
+
+    async def create_notebook(self, title: str) -> NotebookInfo:
+        return _notebook(await self._call(self.client.notebooks.create(title)))
 
     async def list_sources(self, notebook_id: str) -> list[SourceInfo]:
         items = await self._call(self.client.sources.list(notebook_id))

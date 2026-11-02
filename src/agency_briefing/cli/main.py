@@ -393,6 +393,21 @@ def notebook_select(notebook_id):
     emit(data, lambda d: out.ok(f"Notebook predefinito: {d['title']} ({d['id']})"))
 
 
+@notebook.command("create")
+@click.argument("title")
+@click.option("--select", is_flag=True, help="Lo imposta anche come notebook predefinito.")
+@json_option
+def notebook_create(title, select):
+    """Crea un notebook vuoto su NotebookLM.
+
+    \b
+    Esempio: gweb notebook create "Cliente Rossi - nuovo sito" --select
+    """
+    data = c().app.notebook_create(title, select=select)
+    emit(data, lambda d: out.ok(f"Notebook creato: {d['title']} ({d['id']})"
+                                + (" — predefinito" if d["default"] else "")))
+
+
 @notebook.command("current")
 @json_option
 def notebook_current():

@@ -89,13 +89,18 @@ class LocalAuthState:
 
 class NotebookSession(ABC):
     """Sessione autenticata aperta. Tutte le operazioni sono di sola lettura tranne
-    ``upload_audio`` e ``ask`` (che aggiunge un turno alla conversazione del notebook)."""
+    ``upload_audio``, ``create_notebook`` e ``ask`` (che aggiunge un turno alla
+    conversazione del notebook)."""
 
     @abstractmethod
     async def list_notebooks(self) -> list[NotebookInfo]: ...
 
     @abstractmethod
     async def get_notebook(self, notebook_id: str) -> NotebookInfo | None: ...
+
+    @abstractmethod
+    async def create_notebook(self, title: str) -> NotebookInfo:
+        """Crea un notebook vuoto. Chiamata unica: in caso di esito incerto non si ritenta."""
 
     @abstractmethod
     async def list_sources(self, notebook_id: str) -> list[SourceInfo]: ...

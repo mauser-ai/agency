@@ -62,8 +62,10 @@ class Daemon:
                                        "started_at": self.started_at, "version": __version__})
 
     def _on_finalized(self, rec) -> None:
-        if not (self.cfg.get("upload.auto_after_stop") and rec.kind == "mic"
-                and rec.state == RecState.READY and rec.notebook_id):
+        rec = self.app.store.get(rec.id)  # upload_on_ready può essere cambiato nel frattempo
+        wanted = self.cfg.get("upload.auto_after_stop") or rec.upload_on_ready
+        if not (wanted and rec.kind == "mic" and rec.state == RecState.READY
+                and rec.notebook_id):
             return
         try:
             job = self.app.queue.enqueue(rec, rec.notebook_id)
@@ -72,6 +74,9 @@ class Daemon:
             pass
         except AgencyError as exc:
             log.warning("Upload automatico non accodato: %s", exc.message)
+        finally:
+            if rec.upload_on_ready:
+                self.app.store.update(rec.id, upload_on_ready=0)
 
     def stop(self, *_args) -> None:
         log.info("Arresto del servizio richiesto")

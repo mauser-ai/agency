@@ -29,7 +29,7 @@ SD 115 GB (87 GB liberi). Utente `riccardo` (non `pi`), host `DartsVision`, ragg
   ancora. Nota: il primo tentativo di login ha salvato una sessione non collegata
   ("authuser=0 did not return a signed-in account"): `notebooklm list` sul Mac lo rivela
   prima dell'import (aggiunto al README).
-- `pytest` sul Pi: 46 test passati in ~55 s; `ruff` pulito.
+- `pytest` sul Pi: 48 test passati in ~55 s; `ruff` pulito.
 - **Microfono: HAT I2S Keyestudio 2-Mic Pi HAT V1.0** (clone del ReSpeaker 2-Mic v1.0,
   codec WM8960 a 0x1a su i2c-1, `dtoverlay=wm8960-soundcard` in
   `/boot/firmware/config.txt`; nessun microfono USB). Scheda ALSA `wm8960soundcard`,
@@ -44,6 +44,20 @@ SD 115 GB (87 GB liberi). Utente `riccardo` (non `pi`), host `DartsVision`, ragg
   contatto dell'HAT non inserito bene; dopo il rimontaggio risponde. Se ricapita senza
   voler riavviare: `echo 1-001a | sudo tee /sys/bus/i2c/drivers/wm8960/bind` crea la
   scheda (il probe differito della `simple-audio-card` riparte da solo).
+- **App Mac per la barra dei menu** (`macos/GwebBar`, SwiftUI, macOS 13+), 2026-11-02:
+  Nuova registrazione → Stop → scelta del notebook o creazione di uno nuovo → upload.
+  Comunica via SSH (`gweb … --json`), nessuna porta aperta. Nuovi comandi/flussi in gweb:
+  `notebook create` (API `NotebooksAPI.create` verificata sulla 0.8.6 installata) e upload
+  richiesto durante la finalizzazione (`upload_on_ready`, schema DB v3, migrazione
+  verificata sul DB reale del Pi). Verificato: 9 test Swift (decodifica del JSON reale,
+  quoting della shell remota fino a `sh`, rendering dei tre stati in chiaro/scuro);
+  sequenza completa dei comandi dell'app via SSH sul Pi con **microfono reale** e istanza
+  gweb isolata con backend NotebookLM **finto** (start → status → stop → scelta del
+  notebook durante la finalizzazione → upload accodato dal demone → fonte pronta; titolo
+  con apostrofo). App installata in `~/Applications` e avviata sulla configurazione reale.
+  **Non verificato**: upload reale su NotebookLM avviato dall'app (vietato senza richiesta
+  esplicita), clic nella finestrella vera (lo strumento di controllo del computer non
+  vede le app solo-barra-dei-menu).
 - Rimosso dal Pi un kiosk preesistente (Chromium a schermo intero al login, progetto
   "7 Campanili") che bloccava il desktop: non riguarda gweb, nessun impatto sul servizio.
 
@@ -72,7 +86,7 @@ Correzioni emerse sul Pi:
   più forti e `anlmdn` (più lento, meno efficace). Approvato all'ascolto dall'utente
   (2026-11-02) rispetto alle varianti leggera e forte; `""` disattiva il filtro. Test: `test_encode_applies_audio_filter`.
 
-## Completato e verificato (test automatici: `pytest`, 46 test, ~25 s x86 / ~55 s Pi 4)
+## Completato e verificato (test automatici: `pytest`, 48 test, ~25 s x86 / ~55 s Pi 4)
 - Configurazione TOML con default, validazione di chiavi e tipi, `config init/show/path`.
 - Scoperta microfono da `/proc/asound` (finto) per **ID scheda**, `auto` = primo USB,
   errore operativo se assente.
@@ -135,7 +149,8 @@ Prova manuale end-to-end eseguita (backend fake, arecord simulato): `service run
 - Il titolo remoto contiene `[ID]` per la riconciliazione: se lo rinomini a mano nel
   notebook, la riconciliazione automatica non lo riconosce (resta `jobs resolve`).
 - Un riavvio del Pi entro 180 s riprende la registrazione (voluto); oltre, finalizza.
-- Nessuna API di rete per l'app Mac (prevista, vedi architecture.md).
+- L'app Mac non è firmata né notarizzata (firma ad-hoc, uso personale): si compila sul Mac
+  con `macos/GwebBar/build-app.sh`.
 - Gli audio vengono eliminati solo dalla pulizia (disattivata di default). Con
   `mode = "all"` l'audio originale non è recuperabile se NotebookLM non lo rende
   riscaricabile (non verificato).
@@ -149,4 +164,5 @@ Prova manuale end-to-end eseguita (backend fake, arecord simulato): `service run
 3. ~~Login dal Mac, `gweb notebook status`, `gweb notebook list`~~ fatto il 2026-11-02.
 4. Prova di registrazione reale breve; upload su un notebook di prova **solo dopo conferma**.
 5. Aggiornare questo file con gli esiti reali (formato accettato, tempi di elaborazione).
-6. Poi: API locale autenticata per l'app Mac; pulsante/LED GPIO.
+6. ~~App Mac~~ fatta (vedi sopra); primo upload reale dall'app a cura dell'utente.
+7. Poi: pulsante/LED GPIO.

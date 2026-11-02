@@ -7,13 +7,13 @@ Leggi questo file, poi `docs/status.md` (cosa è fatto/verificato) e `docs/archi
 Dispositivo autonomo (Raspberry Pi 4 + microfono USB, sempre acceso) che registra i briefing
 di una web agency, li conserva con metadati e li carica come **fonti audio** nei notebook
 NotebookLM, poi interroga il notebook (domande, riepilogo strutturato). Tutto da terminale
-(`gweb`). In futuro un'app Mac lo controllerà tramite un'API locale autenticata (non ancora
-implementata). Nessun modello AI locale: l'elaborazione è su NotebookLM.
+(`gweb`) o dall'app per la barra dei menu del Mac (`macos/GwebBar`, SwiftUI), che esegue
+`gweb … --json` via SSH: niente API di rete. Nessun modello AI locale: l'elaborazione è su
+NotebookLM.
 
 ## Architettura in breve
 ```
-CLI (agency_briefing/cli)  ─┐
-futura API HTTP (non fatta) ─┴─► AgencyApp (app.py)  ── logica condivisa, ritorna dict
+App Mac ── ssh ── CLI (agency_briefing/cli, --json) ──► AgencyApp (app.py)  ── logica condivisa, ritorna dict
                                    │
           ┌────────────────────────┼─────────────────────────┐
      RecordingStore          JobQueue/UploadWorker      NotebookBackend (adapter)
@@ -87,5 +87,6 @@ gweb audio devices && gweb audio test --duration 10
 | Prompt riepilogo | `briefing.py` |
 | Pulizia audio già su NotebookLM | `cleanup.py` |
 | Servizio | `systemd.py`, `deploy/gweb.service` |
+| App Mac (barra dei menu) | `macos/GwebBar/` (`RemoteGweb.swift` = comandi usati, `swift test`) |
 
 Aggiorna `docs/status.md` a ogni incremento (cosa è verificato e dove).

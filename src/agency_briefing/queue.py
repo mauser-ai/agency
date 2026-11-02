@@ -138,6 +138,13 @@ class JobQueue:
         self._sync_recording(job_id)
         return self.get(job_id)
 
+    def open_job_for(self, recording_id: str, notebook_id: str) -> Job | None:
+        row = self.db.one(
+            "SELECT * FROM jobs WHERE recording_id=? AND notebook_id=? "
+            "AND state NOT IN ('failed','cancelled') ORDER BY id DESC LIMIT 1",
+            (recording_id, notebook_id))
+        return Job.from_row(row) if row else None
+
     def retry(self, job_id: int) -> Job:
         job = self.get(job_id)
         if job.state in (JobState.SUCCEEDED, JobState.CANCELLED):

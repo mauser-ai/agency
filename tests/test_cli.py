@@ -56,6 +56,13 @@ def test_notebook_flow_with_fake_backend(cfg_path):
     assert code == 2
     code, outp, _ = run("ask", "Quali decisioni?", "--json")
     assert code == 0 and json.loads(outp)["notebook"]["id"] == "nb-demo-interno"
+    code, outp, _ = run("notebook", "create", "Cliente Bianchi", "--select", "--json")
+    nb = json.loads(outp)
+    assert code == 0 and nb["title"] == "Cliente Bianchi" and nb["default"] is True
+    code, outp, _ = run("notebook", "list", "--json")
+    assert any(n["id"] == nb["id"] and n["default"] for n in json.loads(outp))
+    code, _, _ = run("notebook", "create", "  ", "--json")
+    assert code == 2
 
 
 def test_audio_devices_and_test(cfg_path):

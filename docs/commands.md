@@ -54,6 +54,7 @@ su stdout, con lo stesso codice di uscita.
 | `gweb notebook status [--offline] [--json]` | File sessione, permessi, data, master token, ultimo keepalive; senza `--offline` elenca i notebook (sola lettura). | T (assenza sessione → 5), R |
 | `gweb notebook list [--json]` | Notebook dell'account; `*` = predefinito. | T (fake), R |
 | `gweb notebook select [ID\|prefisso\|titolo]` | Notebook predefinito persistente; senza argomento scelta numerata interattiva (exit 2 se non interattivo). | T (fake), R |
+| `gweb notebook create TITOLO [--select] [--json]` | Crea un notebook vuoto (scrittura: invio unico, nessun ritentativo automatico); `--select` lo rende predefinito. Usato dall'app Mac. | T (fake), R |
 | `gweb notebook current [--json]` | Predefinito (exit 3 se assente). | T |
 | `gweb notebook sources [-n NB] [--json]` | Fonti e stato di elaborazione (sola lettura). | T (fake), R |
 
@@ -71,7 +72,7 @@ su stdout, con lo stesso codice di uscita.
 |---|---|---|
 | `gweb recordings list [--limit N] [--json]` | ID, data, titolo, durata, stato locale, stato upload, notebook. | T |
 | `gweb recordings show ID [--json]` | Metadati completi, segmenti, lavori, riepiloghi, eventi. ID abbreviabili (prefisso univoco). | T |
-| `gweb recordings upload ID [--notebook NB] [--wait] [--json]` | Accoda l'upload (esplicito). Exit 4 se già caricata/in coda per quel notebook. | T (fake), R |
+| `gweb recordings upload ID [--notebook NB] [--wait] [--json]` | Accoda l'upload (esplicito). Se la registrazione è ancora in arresto/finalizzazione, imposta il notebook e risponde `"scheduled": true`: il servizio accoda l'upload appena il file è pronto (chi lo chiede può disconnettersi). Exit 4 se già caricata/in coda per quel notebook, 8 se la registrazione è ancora in corso. | T (fake), R |
 | `gweb recordings import PATH --title T [--notebook NB] [--json]` | Copia nell'archivio; MP3/M4A senza conversione, altri formati → M4A. | T |
 | `gweb recordings prune [--yes] [--mode all\|segments] [--min-age-days N] [--json]` | Senza `--yes` simula. Elimina l'audio locale solo delle registrazioni con fonte verificata READY su NotebookLM al momento, pronta da almeno `min_age_days`. Rete assente / sessione scaduta → exit 7/5 senza eliminare nulla. Metadati, eventi e riepiloghi restano; una registrazione ripulita non è più caricabile (exit 4). | T (fake), R |
 | `gweb recordings finalize ID [--json]` | Ripete unione/codifica (es. dopo errore ffmpeg). | T (indiretto) |

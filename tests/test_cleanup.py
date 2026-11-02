@@ -114,9 +114,10 @@ def test_schema_migration_adds_columns(tmp_path):
     conn.close()
     db = Database(db_path)
     cols = {r["name"] for r in db.query("PRAGMA table_info(recordings)")}
-    assert {"purged_at", "purged_scope", "purged_bytes"} <= cols
-    assert db.one("SELECT value FROM meta WHERE key='schema_version'")["value"] == "2"
-    assert db.one("SELECT id FROM recordings")["id"] == "r1"
+    assert {"purged_at", "purged_scope", "purged_bytes", "upload_on_ready"} <= cols
+    assert db.one("SELECT value FROM meta WHERE key='schema_version'")["value"] == "3"
+    row = db.one("SELECT id, upload_on_ready FROM recordings")
+    assert row["id"] == "r1" and row["upload_on_ready"] == 0
 
 
 def test_timer_units():

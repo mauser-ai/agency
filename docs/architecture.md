@@ -10,7 +10,7 @@
 | 4 | Coda persistente | `queue.py` | Lavori di upload, retry, riconciliazione, anti-duplicati, verifica elaborazione |
 | 5 | CLI | `cli/main.py`, `cli/output.py` | Client sottile di `AgencyApp` |
 | 6 | Servizio | `daemon.py`, `recorder.py`, `systemd.py` | Demone supervisionato da systemd utente |
-| — | Logica condivisa | `app.py` (`AgencyApp`) | Unico punto d'ingresso per CLI e futura API |
+| — | Logica condivisa | `app.py` (`AgencyApp`) | Unico punto d'ingresso per la CLI (e quindi per l'app Mac, che la usa via SSH) |
 
 ## Separazione di codice, configurazione, dati, credenziali
 
@@ -111,9 +111,11 @@ non c'è un perimetro. Risultato in `summaries` (JSON completo) e
 | Segmenti WAV da 5 min | Un crash compromette al massimo un segmento (riparabile). PCM grezzo = nessuna perdita di qualità durante la cattura. |
 | Upload in **M4A/AAC 96 kbit/s** | La documentazione di notebooklm-py 0.8.6 (issue #2138, `docs/python-api.md`) riporta che un `.wav` si carica ma l'elaborazione termina in `status=ERROR`. Inoltre 1 h WAV 48 kHz mono ≈ 345 MB contro ≈ 43 MB in AAC. La conversione è quindi necessaria, non estetica. MP3 disponibile (`upload_format = "mp3"`). |
 | Riduzione rumore in codifica (`highpass=f=90,afftdn=nf=-25:nr=20:tn=1`) | Sul Pi con l'HAT WM8960 il guadagno necessario per la voce lascia un fruscio a ~-38 dBFS. Misurato su una registrazione reale: rumore -38 → -55 dBFS, voce invariata (-21 dBFS), ~32× tempo reale sul Pi 4 (1 h ≈ 2 min). `anlmdn` più lento (~4×) e meno efficace; `arnndn` richiede un modello esterno. Solo sul file caricato: i WAV originali restano grezzi, `""` disattiva. |
+| App Mac via SSH + `gweb --json` invece di un'API HTTP | Il JSON della CLI è già un contratto documentato e testato; SSH dà autenticazione a chiave e cifratura già configurate, senza porte aperte né token da gestire sul Pi (vincolo "nessun servizio esposto"). Costo: ~0,3–1 s per comando, accettabile per avvio/stop/scelta notebook; il multiplexing di `~/.ssh/config` lo riduce. |
+| Upload chiesto durante la finalizzazione (`upload_on_ready`) | L'app chiede il notebook subito dopo lo stop, mentre il Pi codifica (≈2 min per ora di audio). Invece di tenere aperta la connessione SSH ad aspettare, la richiesta resta nel DB e il demone accoda l'upload a fine codifica: il Mac può chiudersi. |
 | Import MP3/M4A senza conversione | Formati già adatti: nessuna conversione inutile. Altri formati (WAV, OGG, FLAC…) → codificati. |
 | SQLite (WAL) + filesystem | Nessuna ragione emersa per altro: un solo nodo, scritture rare, transazioni e vincoli di unicità tra processi. |
-| CLI ↔ demone via DB | Nessun socket/porta: richieste durevoli, sopravvivono a riavvii, testabili; la futura API userà gli stessi metodi di `AgencyApp`. |
+| CLI ↔ demone via DB | Nessun socket/porta: richieste durevoli, sopravvivono a riavvii, testabili; l'app Mac passa dalla stessa CLI. |
 | systemd **utente** + linger | Nessun root a regime; `systemctl --user` senza sudo; unico comando sudo: `loginctl enable-linger`. |
 | Backend `fake` | Prove complete (coda, duplicati, riepilogo) senza caricare nulla sull'account reale. |
 | Login sul Mac + `--import -` via SSH | Il login Google richiede un browser (Playwright). Il Pi è headless; la libreria documenta la copia di `storage_state.json` su server headless. Trasferimento via stdin SSH: cifrato, nessun file temporaneo, scritto 0600 atomicamente. |
@@ -146,9 +148,9 @@ Non usati di proposito: `chat.delete_conversation` e `ask --new` (distruttivi), 
 artefatti, generazione audio overview, API Android.
 
 ## Pronto per il futuro (non implementato)
-- **API per l'app Mac**: aggiungere un modulo `api/` (es. FastAPI) che chiama `AgencyApp`,
-  in ascolto su socket Unix o su localhost/Tailscale con autenticazione a token; nessun
-  cambiamento a registrazione/coda.
+- **API di rete** (solo se servisse un client senza SSH, es. telefono): un modulo `api/` che
+  chiama `AgencyApp`, su socket Unix o localhost/Tailscale con token. L'app Mac non ne ha
+  bisogno: usa la CLI via SSH.
 - **Pulsante fisico e LED**: un thread nel demone (gpiozero) che crea richieste come la CLI
   (`store.create_mic_request` / `stop_requested`) e legge lo stato per il LED.
 - **Display KPI / gestionale / fatturazione / dashboard**: componenti separati; i KPI

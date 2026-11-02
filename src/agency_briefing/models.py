@@ -109,6 +109,7 @@ class Recording:
     purged_at: str | None = None
     purged_scope: str | None = None
     purged_bytes: int | None = None
+    upload_on_ready: int = 0
 
     @classmethod
     def from_row(cls, row) -> Recording:

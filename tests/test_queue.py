@@ -195,3 +195,32 @@ def test_notebook_association_is_per_recording(app):
     assert rec["notebook_id"] == "nb-demo-cliente-rossi"
     app.notebook_select("nb-demo-interno")
     assert app.store.get(rec["id"]).notebook_id == "nb-demo-cliente-rossi"
+
+
+def test_upload_requested_during_finalization_is_queued_when_ready(app):
+    from agency_briefing.daemon import Daemon
+
+    rec = _ready_recording(app, notebook=None)
+    app.store.update(rec["id"], state=RecState.FINALIZING, kind="mic")
+    out = app.recordings_upload(rec["id"], "nb-demo-interno")
+    assert out["scheduled"] is True and out["job"] is None
+    r = app.store.get(rec["id"])
+    assert r.upload_on_ready == 1 and r.notebook_id == "nb-demo-interno"
+    assert app.queue.list() == []
+    # Fine della finalizzazione: il demone accoda l'upload e azzera la richiesta.
+    app.store.update(rec["id"], state=RecState.READY)
+    Daemon(app)._on_finalized(app.store.get(rec["id"]))
+    jobs = app.queue.list()
+    assert len(jobs) == 1 and jobs[0].notebook_id == "nb-demo-interno"
+    assert app.store.get(rec["id"]).upload_on_ready == 0
+    _drain(app)
+    assert _uploads(app) == 1
+
+
+def test_upload_rejected_while_still_recording(app):
+    from agency_briefing.errors import NotReady
+
+    rec = _ready_recording(app)
+    app.store.update(rec["id"], state=RecState.RECORDING)
+    with pytest.raises(NotReady):
+        app.recordings_upload(rec["id"], "nb-demo-interno")

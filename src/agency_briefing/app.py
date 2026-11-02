@@ -255,6 +255,16 @@ class AgencyApp:
         self.db.set_setting("notebook.default", value)
         return value
 
+    def notebook_create(self, title: str, *, select: bool = False) -> dict:
+        title = (title or "").strip()
+        if not title:
+            raise UsageError("Il titolo del notebook non può essere vuoto")
+        nb = self.backend.run(lambda s: s.create_notebook(title))
+        if select:
+            self.db.set_setting("notebook.default",
+                                {"id": nb.id, "title": nb.title, "selected_at": iso()})
+        return nb.to_dict() | {"default": select}
+
     def notebook_current(self) -> dict | None:
         return self.db.get_setting("notebook.default")
 
@@ -394,7 +404,22 @@ class AgencyApp:
             else:
                 warnings.append("Caricamento in un notebook diverso da quello associato: "
                                 "l'associazione della registrazione resta invariata")
+        if rec.state in (RecState.STOPPING, RecState.FINALIZING):
+            # Il file non è ancora pronto: il demone accoda l'upload a fine codifica, così
+            # chi lo chiede (es. l'app Mac via SSH) non deve restare collegato ad aspettare.
+            self.store.update(rec.id, upload_on_ready=1)
+            rec = self.store.get(rec.id)
+            if rec.state != RecState.READY:
+                return {"job": None, "scheduled": True, "recording": rec.to_dict(),
+                        "warnings": warnings + ["Upload in coda appena la registrazione è "
+                                                "pronta (finalizzazione in corso)"]}
+            # Finalizzata nel frattempo: il demone può averla già accodata.
+            open_job = self.queue.open_job_for(rec.id, nb.id)
+            if open_job:
+                return {"job": open_job.to_dict(), "scheduled": False, "warnings": warnings}
         job = self.queue.enqueue(rec, nb.id)
+        if rec.upload_on_ready:
+            self.store.update(rec.id, upload_on_ready=0)
         if not self.daemon_state()["alive"]:
             warnings.append("Servizio non attivo: il caricamento partirà al suo avvio "
                             "(oppure esegui 'gweb jobs run')")
@@ -405,7 +430,8 @@ class AgencyApp:
                 if job.state not in (JobState.PENDING, JobState.RUNNING):
                     break
                 time.sleep(1)
-        return {"job": self.queue.get(job.id).to_dict(), "warnings": warnings}
+        return {"job": self.queue.get(job.id).to_dict(), "scheduled": False,
+                "warnings": warnings}
 
     # ------------------------------------------------------------------ pulizia
     def recordings_prune(self, *, execute: bool, min_age_days: float | None = None,

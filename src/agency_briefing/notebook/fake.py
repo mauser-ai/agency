@@ -112,6 +112,13 @@ class _FakeSession(NotebookSession):
             return True
         return False
 
+    async def create_notebook(self, title: str) -> NotebookInfo:
+        self.maybe_fail("network")
+        nb = {"id": "nb-" + uuid.uuid4().hex[:12], "title": title, "sources": []}
+        with self.b._locked() as st:
+            st["notebooks"].insert(0, nb)
+        return NotebookInfo(id=nb["id"], title=title, sources_count=0)
+
     def _nb(self, st: dict, notebook_id: str) -> dict:
         for nb in st["notebooks"]:
             if nb["id"] == notebook_id:

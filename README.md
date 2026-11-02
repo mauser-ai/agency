@@ -187,6 +187,16 @@ permette il rinnovo automatico anche dopo la scadenza dei cookie, ma è una cred
 **dell'intero account Google, durevole, che sopravvive al cambio password**. Usala solo con
 un account dedicato e valuta il rischio; revoca da Google Account → Sicurezza → Dispositivi.
 
+## App per il Mac (barra dei menu)
+
+Per registrare senza terminale c'è una piccola app per la barra in alto del Mac: *Nuova
+registrazione* → *Stop* → scegli o crea il notebook, e il Raspberry carica da solo.
+Installazione e dettagli: [macos/GwebBar/README.md](macos/GwebBar/README.md).
+
+```bash
+cd macos/GwebBar && ./build-app.sh --install
+```
+
 ## Uso tipico
 
 ```bash
