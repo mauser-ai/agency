@@ -106,6 +106,10 @@ class JobQueue:
                            hint="Attendi la fine della finalizzazione: agency recordings show "
                                 + rec.id)
         if not Path(rec.file_path).is_file():
+            if rec.purged_scope == "all":
+                raise Conflict(f"L'audio di {rec.id} è stato eliminato dalla pulizia il "
+                               f"{rec.purged_at[:10]}: non è più caricabile",
+                               hint="La fonte resta disponibile nel notebook originale.")
             raise NotFound(f"File audio mancante: {rec.file_path}")
         now = iso()
         try:

@@ -18,7 +18,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
+
+# Colonne aggiunte dopo la v1: (tabella, colonna, tipo). Applicate con ALTER TABLE.
+MIGRATIONS = [
+    ("recordings", "purged_at", "TEXT"),        # pulizia: quando sono stati eliminati file locali
+    ("recordings", "purged_scope", "TEXT"),     # segments | all
+    ("recordings", "purged_bytes", "INTEGER"),
+]
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (
@@ -56,7 +63,10 @@ CREATE TABLE IF NOT EXISTS recordings (
     channels INTEGER,
     upload_status TEXT NOT NULL DEFAULT 'not_uploaded',
     remote_source_id TEXT,
-    error TEXT
+    error TEXT,
+    purged_at TEXT,
+    purged_scope TEXT,
+    purged_bytes INTEGER
 );
 
 -- Un solo microfono: al massimo una registrazione attiva alla volta.
@@ -169,9 +179,16 @@ class Database:
     def _init_schema(self) -> None:
         conn = self.connect()
         conn.executescript(SCHEMA)
+        for table, column, ctype in MIGRATIONS:
+            cols = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}
+            if column not in cols:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {ctype}")
         row = conn.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()
         if row is None:
             conn.execute("INSERT INTO meta(key, value) VALUES('schema_version', ?)",
+                         (str(SCHEMA_VERSION),))
+        elif int(row["value"]) < SCHEMA_VERSION:
+            conn.execute("UPDATE meta SET value=? WHERE key='schema_version'",
                          (str(SCHEMA_VERSION),))
         elif int(row["value"]) > SCHEMA_VERSION:
             raise RuntimeError(

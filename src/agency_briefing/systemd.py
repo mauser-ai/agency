@@ -82,10 +82,48 @@ def unit_state(unit_name: str) -> dict:
     info = {"systemd_user": systemctl_available(), "unit_file": str(unit_path(unit_name)),
             "installed": unit_path(unit_name).exists(), "active": None, "enabled": None,
             "linger": linger_enabled()}
+    info["cleanup_timer"] = None
     if info["systemd_user"]:
         info["active"] = _run(["systemctl", "--user", "is-active", unit_name]).stdout.strip()
         info["enabled"] = _run(["systemctl", "--user", "is-enabled", unit_name]).stdout.strip()
+        if unit_path(CLEANUP_TIMER).exists():
+            info["cleanup_timer"] = {
+                "enabled": _run(["systemctl", "--user", "is-enabled", CLEANUP_TIMER])
+                .stdout.strip(),
+                "next": _run(["systemctl", "--user", "show", CLEANUP_TIMER, "-p",
+                              "NextElapseUSecRealtime", "--value"]).stdout.strip() or None,
+            }
     return info
+
+
+CLEANUP_SERVICE = "agency-cleanup.service"
+CLEANUP_TIMER = "agency-cleanup.timer"
+
+
+def install_cleanup_timer(schedule: str, enabled: bool) -> list[str]:
+    """Timer settimanale di pulizia. Con ``enabled=False`` lo disattiva se presente."""
+    from .cleanup import render_timer_units
+
+    steps: list[str] = []
+    service, timer = render_timer_units(agency_executable(), schedule)
+    if enabled:
+        for name, content in ((CLEANUP_SERVICE, service), (CLEANUP_TIMER, timer)):
+            path = unit_path(name)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content)
+            steps.append(f"unità scritta: {path}")
+    if not systemctl_available():
+        steps.append("systemd utente non disponibile: timer non attivato")
+        return steps
+    _run(["systemctl", "--user", "daemon-reload"])
+    if enabled:
+        res = _run(["systemctl", "--user", "enable", "--now", CLEANUP_TIMER])
+        steps.append(f"pulizia settimanale attiva ({schedule}): "
+                     f"{'ok' if res.returncode == 0 else res.stderr.strip()}")
+    elif unit_path(CLEANUP_TIMER).exists():
+        _run(["systemctl", "--user", "disable", "--now", CLEANUP_TIMER])
+        steps.append("pulizia automatica disattivata (cleanup.enabled = false)")
+    return steps
 
 
 def linger_enabled() -> bool | None:

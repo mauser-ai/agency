@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agency-briefing"
-version = "0.1.0"
+version = "0.2.0"
 description = "Registratore di briefing per Raspberry Pi con caricamento su NotebookLM, controllabile da terminale"
 readme = "README.md"
 requires-python = ">=3.10"

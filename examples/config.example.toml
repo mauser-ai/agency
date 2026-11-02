@@ -58,6 +58,18 @@ profile = "default"
 keepalive_minutes = 20
 timeout_seconds = 60
 
+[cleanup]
+# Pulizia automatica settimanale (timer systemd) dell'audio locale GIÀ PRONTO su NotebookLM.
+# Ogni fonte viene ricontrollata su NotebookLM prima di eliminare; senza rete o con
+# sessione scaduta non si elimina nulla. Dopo aver cambiato: agency service install
+enabled = false
+schedule = "Sun *-*-* 03:30:00"   # sintassi OnCalendar di systemd (domenica 03:30)
+min_age_days = 7                  # giorni da quando la fonte è risultata pronta
+# all = elimina tutto l'audio locale (NotebookLM conserva la fonte, ma non è garantito
+#       che l'audio originale sia riscaricabile)
+# segments = elimina solo i WAV originali, tiene l'M4A caricato (~90% di spazio in meno)
+mode = "all"
+
 [service]
 unit_name = "agency.service"
 poll_interval_seconds = 0.5

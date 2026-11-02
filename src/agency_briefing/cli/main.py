@@ -429,6 +429,10 @@ def _print_rec(r: dict) -> None:
             ("durata", out.duration(r["duration_seconds"])),
             ("file", r["file_path"]), ("dimensione", out.size(r["file_size"])),
             ("dispositivo", r["device"]), ("fonte remota", r["remote_source_id"]),
+            ("audio locale", (f"eliminato il {out.local_time(r['purged_at'])} "
+                              f"({'tutto' if r['purged_scope'] == 'all' else 'solo WAV'}, "
+                              f"{out.size(r['purged_bytes'])})") if r.get("purged_at")
+             else "presente"),
             ("errore", r["error"])])
 
 
@@ -597,6 +601,46 @@ def recordings_import(path, title, nb):
                           _print_rec(d["recording"])))
 
 
+@recordings.command("prune")
+@click.option("--yes", is_flag=True, help="Esegue davvero (senza: solo simulazione).")
+@click.option("--min-age-days", type=float, help="Override di cleanup.min_age_days.")
+@click.option("--mode", type=click.Choice(["all", "segments"]),
+              help="all = tutto l'audio locale; segments = solo WAV (tiene l'M4A).")
+@json_option
+def recordings_prune(yes, min_age_days, mode):
+    """Elimina l'audio locale delle registrazioni già PRONTE su NotebookLM.
+
+    Ogni fonte viene ricontrollata su NotebookLM prima di eliminare; se la rete o la
+    sessione non funzionano non si elimina nulla. Metadati e riepiloghi restano.
+    Attenzione: con --mode all l'audio originale non è recuperabile da NotebookLM.
+
+    \b
+    Esempi:
+      agency recordings prune                 # simulazione: cosa verrebbe eliminato
+      agency recordings prune --yes
+      agency recordings prune --yes --mode segments --min-age-days 0
+    """
+    data = c().app.recordings_prune(execute=yes, min_age_days=min_age_days, mode=mode)
+
+    def human(d):
+        todo = d["deleted"] if yes else d["would_delete"]
+        verb = "Eliminati" if yes else "Da eliminare (simulazione)"
+        click.secho(f"{verb}: {len(todo)} registrazioni, "
+                    f"{out.size(d['freed_bytes'] if yes else d['would_free_bytes'])} "
+                    f"(modalità {d['mode']}, età minima {d['min_age_days']:g} giorni)", bold=True)
+        for i in todo:
+            click.echo(f"  {i['recording_id']}  {i['title']}  {out.size(i['bytes'])}")
+        if d["skipped"]:
+            click.echo("Mantenute:")
+            for i in d["skipped"]:
+                click.echo(f"  {i['recording_id']}  {i['title']}  — {i['reason']}")
+        if not yes and todo:
+            click.echo("Per eseguire: agency recordings prune --yes")
+        click.echo(f"Spazio libero: {d['disk_free_mb']} MB")
+
+    emit(data, human)
+
+
 @recordings.command("finalize")
 @click.argument("recording_id")
 @json_option
@@ -753,6 +797,8 @@ def service_status():
                  if dm["alive"] else "non attivo"),
                 ("registrazione", (d["active_recording"] or {}).get("id") or "nessuna"),
                 ("coda", ", ".join(f"{k}={v}" for k, v in d["jobs"].items()) or "vuota"),
+                ("pulizia automatica", (f"attiva, prossima: {u['cleanup_timer']['next']}"
+                                        if u.get("cleanup_timer") else "non installata")),
                 ("spazio libero", f"{d['disk_free_mb']} MB")])
 
     emit(data, human)
@@ -791,6 +837,9 @@ def service_install(no_start, print_only):
         return
     for step in systemd.install_unit(app.cfg.get("service.unit_name"), app.cfg.source_path,
                                      start=not no_start):
+        click.echo("  " + step)
+    for step in systemd.install_cleanup_timer(app.cfg.get("cleanup.schedule"),
+                                              bool(app.cfg.get("cleanup.enabled"))):
         click.echo("  " + step)
     if systemd.linger_enabled() is False:
         out.warn("Per l'avvio al boot senza login esegui una volta: "

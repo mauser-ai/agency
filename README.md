@@ -184,8 +184,35 @@ dopo lo stop: `auto_after_stop = true` nella sezione `[upload]` del config.
 | Riepiloghi | `~/.local/share/agency/summaries/` |
 | Log | `journalctl --user -u agency` e `~/.local/state/agency/logs/agency.log` |
 
-Gli audio originali non vengono mai eliminati automaticamente: controlla lo spazio con
-`agency doctor` (un'ora ≈ 345 MB di WAV + 43 MB di M4A a 48 kHz mono).
+Un'ora occupa ≈ 345 MB di WAV + 43 MB di M4A (48 kHz mono). Gli audio non vengono
+eliminati, a meno di attivare la pulizia qui sotto.
+
+## Pulizia settimanale dell'audio già su NotebookLM
+
+Elimina l'audio locale delle registrazioni la cui fonte è **pronta su NotebookLM**: ogni
+fonte viene ricontrollata sul notebook prima di eliminare; se la rete o la sessione non
+funzionano non si elimina nulla. Metadati e riepiloghi restano.
+
+Prova in simulazione (non elimina nulla):
+
+```bash
+agency recordings prune
+```
+
+Attivazione: in `~/.config/agency/config.toml` imposta `enabled = true` nella sezione
+`[cleanup]` (ogni domenica alle 03:30, solo fonti pronte da almeno 7 giorni), poi:
+
+```bash
+agency service install
+```
+
+```bash
+systemctl --user list-timers agency-cleanup.timer
+```
+
+> ⚠️ NotebookLM conserva la fonte (contenuti interrogabili), ma non è garantito che l'audio
+> originale si possa riscaricare. Con `mode = "all"` l'audio è perso. Con
+> `mode = "segments"` elimini solo i WAV e tieni l'M4A (circa il 90% di spazio recuperato).
 
 ## Risoluzione dei problemi
 

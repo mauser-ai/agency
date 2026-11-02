@@ -73,6 +73,7 @@ su stdout, con lo stesso codice di uscita.
 | `agency recordings show ID [--json]` | Metadati completi, segmenti, lavori, riepiloghi, eventi. ID abbreviabili (prefisso univoco). | T |
 | `agency recordings upload ID [--notebook NB] [--wait] [--json]` | Accoda l'upload (esplicito). Exit 4 se già caricata/in coda per quel notebook. | T (fake), R |
 | `agency recordings import PATH --title T [--notebook NB] [--json]` | Copia nell'archivio; MP3/M4A senza conversione, altri formati → M4A. | T |
+| `agency recordings prune [--yes] [--mode all\|segments] [--min-age-days N] [--json]` | Senza `--yes` simula. Elimina l'audio locale solo delle registrazioni con fonte verificata READY su NotebookLM al momento, pronta da almeno `min_age_days`. Rete assente / sessione scaduta → exit 7/5 senza eliminare nulla. Metadati, eventi e riepiloghi restano; una registrazione ripulita non è più caricabile (exit 4). | T (fake), R |
 | `agency recordings finalize ID [--json]` | Ripete unione/codifica (es. dopo errore ffmpeg). | T (indiretto) |
 
 ## Coda
@@ -100,7 +101,7 @@ fonte in elaborazione) · `uncertain` · `blocked_auth` · `succeeded` (fonte pr
 
 | Comando | Descrizione | Verifica |
 |---|---|---|
-| `agency service install [--no-start] [--print]` | Scrive `~/.config/systemd/user/agency.service` (backup se diverso), `daemon-reload`, `enable`, `restart`. | `--print` T; P |
+| `agency service install [--no-start] [--print]` | Scrive `~/.config/systemd/user/agency.service` (backup se diverso), `daemon-reload`, `enable`, `restart`. Con `cleanup.enabled = true` installa e attiva anche `agency-cleanup.timer` (esegue `recordings prune --yes` secondo `cleanup.schedule`); con `false` lo disattiva se presente. | `--print` T; P |
 | `agency service start\|stop\|restart` | `systemctl --user …`. | P |
 | `agency service status [--json]` | Unità, linger, demone (pid/heartbeat), registrazione attiva, contatori coda, keepalive, spazio. Exit 6 se il demone non è vivo. | T (parziale), P |
 | `agency service logs [-n 100] [-f]` | `journalctl --user -u agency.service`; in mancanza `~/.local/state/agency/logs/agency.log`. | P |

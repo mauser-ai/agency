@@ -79,6 +79,18 @@ Macchina a stati in `queue.py`. Punti chiave:
   ERROR transitorio durante la trascrizione), poi `failed/PROCESSING_FAILED`; oltre 180 min
   `failed/PROCESSING_TIMEOUT` (ricontrollabile con `jobs retry`).
 
+### Pulizia dell'audio già su NotebookLM
+`agency recordings prune` (manuale) o `agency-cleanup.timer` (systemd utente, di default
+domenica 03:30, `Persistent=true` = recupera il giro perso se il Pi era spento). Una
+registrazione viene ripulita solo se: stato `ready`, lavoro `succeeded` con ID fonte, fonte
+pronta da ≥ `min_age_days` (7) e **verifica remota al momento** (`list_sources` del notebook:
+fonte presente e READY). Notebook sparito o fonte rimossa/non pronta → mantenuta. Rete o
+sessione in errore → interruzione senza eliminare nulla. Modalità `all` (tutto l'audio) o
+`segments` (solo WAV, tiene l'M4A). Restano riga DB (`purged_at`, `purged_scope`,
+`purged_bytes`), `metadata.json`, eventi, riepiloghi; i percorsi sono verificati interni
+all'archivio. Una registrazione ripulita con `all` non è più caricabile né rifinalizzabile.
+Rischio accettato con `all`: non è garantito che NotebookLM permetta di riscaricare l'audio.
+
 ### Riepilogo
 `agency briefing summarize ID`: richiede lavoro con fonte pronta (verifica remota se non
 ancora `succeeded`). Domanda 1 con `source_ids=[fonte della registrazione]` (sezioni:
@@ -103,6 +115,7 @@ non c'è un perimetro. Risultato in `summaries` (JSON completo) e
 | systemd **utente** + linger | Nessun root a regime; `systemctl --user` senza sudo; unico comando sudo: `loginctl enable-linger`. |
 | Backend `fake` | Prove complete (coda, duplicati, riepilogo) senza caricare nulla sull'account reale. |
 | Login sul Mac + `--import -` via SSH | Il login Google richiede un browser (Playwright). Il Pi è headless; la libreria documenta la copia di `storage_state.json` su server headless. Trasferimento via stdin SSH: cifrato, nessun file temporaneo, scritto 0600 atomicamente. |
+| Pulizia con verifica remota, disattivata di default | Eliminazione irreversibile: la regola "è già su NotebookLM" va verificata nel momento in cui si elimina, non dedotta dal DB locale; la si attiva con una riga di config. Timer systemd invece del demone: esecuzione visibile (`systemctl --user list-timers`), log separati, recupero dei giri persi. |
 | Keepalive cookie ogni 20 min | La documentazione della libreria raccomanda 15–20 min per profili inattivi (rotazione `__Secure-1PSIDTS`); aprire/chiudere il client salva i cookie ruotati. |
 
 ## API notebooklm-py verificate (0.8.6)

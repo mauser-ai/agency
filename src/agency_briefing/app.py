@@ -365,6 +365,8 @@ class AgencyApp:
         rec = self.store.get(rid)
         if rec.state in RecState.ACTIVE:
             raise Conflict("La registrazione è ancora attiva")
+        if rec.purged_at:
+            raise Conflict("I segmenti audio sono stati eliminati dalla pulizia")
         rec = finalize_recording(self.cfg, self.store, rec.id)
         return {"recording": rec.to_dict()}
 
@@ -402,6 +404,33 @@ class AgencyApp:
                     break
                 time.sleep(1)
         return {"job": self.queue.get(job.id).to_dict(), "warnings": warnings}
+
+    # ------------------------------------------------------------------ pulizia
+    def recordings_prune(self, *, execute: bool, min_age_days: float | None = None,
+                         mode: str | None = None) -> dict:
+        """Elimina l'audio locale SOLO dopo aver verificato su NotebookLM che la fonte è pronta.
+
+        Senza ``execute`` è una simulazione (nessun file toccato). Errori di rete o di
+        sessione interrompono tutto prima di qualsiasi eliminazione.
+        """
+        from . import cleanup
+
+        mode = mode or self.cfg.get("cleanup.mode")
+        if mode not in ("all", "segments"):
+            raise UsageError("mode deve essere 'all' o 'segments'")
+        age = float(self.cfg.get("cleanup.min_age_days") if min_age_days is None
+                    else min_age_days)
+        items = cleanup.plan(self, mode=mode, min_age_days=age)
+        if any(i.action == "delete" for i in items):
+            self.backend.run(lambda s: cleanup.verify_remote(s, items))
+        if execute:
+            cleanup.execute(self, items, mode)
+        deleted = [i for i in items if i.action == "delete"]
+        return {"dry_run": not execute, "mode": mode, "min_age_days": age,
+                "deleted" if execute else "would_delete": [i.to_dict() for i in deleted],
+                "skipped": [i.to_dict() for i in items if i.action != "delete"],
+                "freed_bytes" if execute else "would_free_bytes": sum(i.bytes for i in deleted),
+                "disk_free_mb": round(free_mb(self.cfg.data_dir))}
 
     # ------------------------------------------------------------------ coda
     def jobs_run(self, max_steps: int = 50) -> list[dict]:

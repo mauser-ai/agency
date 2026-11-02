@@ -44,7 +44,9 @@ Demone `agency service run` (daemon.py, systemd utente)
   sul pacchetto installato (`.venv/lib/python*/site-packages/notebooklm`) e testata in
   `tests/test_units.py::test_notebooklm_py_api_surface`.
 - Le eccezioni della libreria si convertono SOLO in `notebook/notebooklm_py.map_exception`.
-- Non cancellare mai automaticamente audio originali (`segments/`, `import/`).
+- L'audio locale si elimina SOLO in `cleanup.py` (`agency recordings prune`, timer
+  settimanale opzionale) e solo dopo verifica remota che la fonte sia READY; errori di
+  rete/sessione interrompono senza eliminare. Mai altrove. Metadati e riepiloghi restano.
 - Segreti: mai in log, output, repository. File credenziali 0600, directory 0700.
 - Non aprire porte di rete. Nessun servizio esposto.
 
@@ -83,6 +85,7 @@ agency audio devices && agency audio test --duration 10
 | Registrazione, riconnessione, ripresa | `recorder.py` |
 | Formato audio e motivazioni | `audio/encode.py`, `docs/architecture.md` |
 | Prompt riepilogo | `briefing.py` |
+| Pulizia audio già su NotebookLM | `cleanup.py` |
 | Servizio | `systemd.py`, `deploy/agency.service` |
 
 Aggiorna `docs/status.md` a ogni incremento (cosa è verificato e dove).

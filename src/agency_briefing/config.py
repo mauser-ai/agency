@@ -81,6 +81,13 @@ DEFAULTS: dict[str, dict[str, Any]] = {
         "keepalive_minutes": 20,
         "timeout_seconds": 60,
     },
+    "cleanup": {
+        # Pulizia periodica (timer systemd) dei file audio la cui fonte è PRONTA su NotebookLM.
+        "enabled": False,
+        "schedule": "Sun *-*-* 03:30:00",  # sintassi OnCalendar di systemd
+        "min_age_days": 7,                 # giorni dalla conferma "fonte pronta"
+        "mode": "all",                     # all = tutto l'audio | segments = solo WAV, tiene l'M4A
+    },
     "service": {
         "unit_name": "agency.service",
         "poll_interval_seconds": 0.5,
@@ -200,6 +207,10 @@ class Config:
                               hint=f"Valori ammessi: {', '.join(sorted(VALID_FORMATS))}")
         if self.data["notebooklm"]["backend"] not in {"notebooklm-py", "fake"}:
             raise ConfigError("notebooklm.backend deve essere 'notebooklm-py' o 'fake'")
+        if self.data["cleanup"]["mode"] not in {"all", "segments"}:
+            raise ConfigError("cleanup.mode deve essere 'all' o 'segments'")
+        if self.data["cleanup"]["min_age_days"] < 0:
+            raise ConfigError("cleanup.min_age_days deve essere >= 0")
         if self.data["audio"]["channels"] not in (1, 2):
             raise ConfigError("audio.channels deve essere 1 o 2")
         if self.data["audio"]["segment_seconds"] < 10:

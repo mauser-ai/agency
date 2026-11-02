@@ -106,6 +106,9 @@ class Recording:
     upload_status: str = UploadStatus.NOT_UPLOADED
     remote_source_id: str | None = None
     error: str | None = None
+    purged_at: str | None = None
+    purged_scope: str | None = None
+    purged_bytes: int | None = None
 
     @classmethod
     def from_row(cls, row) -> Recording:

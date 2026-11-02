@@ -1,6 +1,6 @@
 # Stato del progetto
 
-Ultimo aggiornamento: 2026-11-02 · versione 0.1.0
+Ultimo aggiornamento: 2026-11-02 · versione 0.2.0
 
 ## Ambiente in cui è stato sviluppato e verificato
 Il codice è stato scritto e testato in un **container cloud x86_64 (Ubuntu 24.04, Python
@@ -38,6 +38,10 @@ dispositivo (vedi "Da verificare sul Raspberry").
 - Adapter notebooklm-py: superficie API verificata sul pacchetto 0.8.6 installato;
   mappatura eccezioni testata; senza sessione `notebook status` → exit 5.
 - Redazione di cookie/token nei log.
+- Pulizia `recordings prune`: simulazione senza effetti, eliminazione solo dopo verifica
+  remota READY, modalità `all`/`segments`, esclusione per età minima, fonte rimossa dal
+  notebook, rete assente o sessione scaduta (nessuna eliminazione), metadati e riepiloghi
+  conservati, ricaricamento rifiutato, migrazione schema v1→v2, unità timer generate.
 
 Prova manuale end-to-end eseguita (backend fake, arecord simulato): `service run` →
 `notebook select rossi` → `record start` → SIGTERM al demone → riavvio (ripresa) →
@@ -56,6 +60,7 @@ Prova manuale end-to-end eseguita (backend fake, arecord simulato): `service run
 | `notebook list/sources`, `ask` con citazioni reali | sola lettura prima |
 | Upload audio reale, tempi di elaborazione, accettazione M4A da NotebookLM | **solo su tua richiesta esplicita**, su un notebook di prova |
 | Comportamento della rinomina del titolo (`[ID]`) sull'upload reale | `agency notebook sources` dopo il primo upload |
+| Timer di pulizia settimanale (`agency-cleanup.timer`) | `cleanup.enabled = true`, `agency service install`, `systemctl --user list-timers` |
 | Durata reale dei cookie con keepalive ogni 20 min | `agency notebook status` nei giorni successivi |
 
 ## Limitazioni note
@@ -71,7 +76,9 @@ Prova manuale end-to-end eseguita (backend fake, arecord simulato): `service run
   notebook, la riconciliazione automatica non lo riconosce (resta `jobs resolve`).
 - Un riavvio del Pi entro 180 s riprende la registrazione (voluto); oltre, finalizza.
 - Nessuna API di rete per l'app Mac (prevista, vedi architecture.md).
-- Gli audio originali non vengono mai eliminati: lo spazio va gestito a mano.
+- Gli audio vengono eliminati solo dalla pulizia (disattivata di default). Con
+  `mode = "all"` l'audio originale non è recuperabile se NotebookLM non lo rende
+  riscaricabile (non verificato).
 
 ## Prossimi passi
 1. Collegarsi al Pi: `./scripts/inspect-pi.sh`, `./scripts/install.sh`, `agency doctor`.
