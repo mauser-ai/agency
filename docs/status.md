@@ -62,8 +62,8 @@ Correzioni emerse sul Pi:
   applicata solo al file caricato (WAV originali intatti). Sulla stessa registrazione,
   rigenerata con `gweb recordings finalize`: rumore −54,9 dBFS, voce −21,6 dBFS
   (separazione 33 dB), ~32× tempo reale sul Pi 4. Confrontati anche filtri più leggeri,
-  più forti e `anlmdn` (più lento, meno efficace). Giudizio d'ascolto dell'utente da
-  confermare; `""` disattiva il filtro. Test: `test_encode_applies_audio_filter`.
+  più forti e `anlmdn` (più lento, meno efficace). Approvato all'ascolto dall'utente
+  (2026-11-02) rispetto alle varianti leggera e forte; `""` disattiva il filtro. Test: `test_encode_applies_audio_filter`.
 
 ## Completato e verificato (test automatici: `pytest`, 46 test, ~25 s x86 / ~55 s Pi 4)
 - Configurazione TOML con default, validazione di chiavi e tipi, `config init/show/path`.
