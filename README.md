@@ -29,24 +29,12 @@ ssh pi@raspberrypi.local
 
 ### 1. Scaricare il progetto
 
-La repository è privata: il Pi deve autenticarsi su GitHub una volta. Il modo più
-semplice è la GitHub CLI con il codice dispositivo (il codice si conferma dal browser del
-Mac, nessuna password sul Pi):
-
 ```bash
-sudo apt-get install -y gh
+git clone https://github.com/mauser-ai/agency.git ~/agency-briefing
 ```
 
-```bash
-gh auth login --hostname github.com --git-protocol https --web
-```
-
-```bash
-gh repo clone mauser-ai/agency-briefing ~/agency-briefing
-```
-
-In alternativa: una *deploy key* SSH di sola lettura (GitHub → repository → Settings →
-Deploy keys) e `git clone git@github.com:mauser-ai/agency-briefing.git ~/agency-briefing`.
+La cartella si chiama `~/agency-briefing`: tutti i percorsi di questo README la danno per
+scontata. Aggiornamenti successivi: `cd ~/agency-briefing && git pull && ./scripts/install.sh`.
 
 ### 2. Ispezione (facoltativa, sola lettura)
 
