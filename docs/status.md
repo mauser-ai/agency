@@ -86,6 +86,14 @@ SD 115 GB (87 GB liberi). Utente `riccardo` (non `pi`), host `DartsVision`, ragg
   bordi, materiale dei menu, angoli arrotondati), aperto da icona, scorciatoia globale ⌥⌘B
   (Carbon, senza permessi), avvio e riapertura; ancorato all'icona se visibile, altrimenti in
   alto a destra. Verificato sul Mac: pannello a y=39 sotto la barra, CPU 0,6%.
+- App Mac 1.0.0 "Briefing" per il team (2026-11-02): icona dal logo GWEB (vettoriale,
+  griglia Apple) anche nella barra (template), bundle `agency.gweb.briefing`, firma
+  Developer ID (hardened runtime), DMG con LEGGIMI. Accesso dei colleghi: chiave dedicata
+  creata dall'app + `scripts/add-team-key.sh` con `restrict` e comando forzato
+  `scripts/gweb-ssh-guard` (solo i comandi gweb dell'app). Verificato sul Pi con una chiave
+  di prova (poi rimossa): stato consentito; shell, `;`-injection, `service stop` e accesso
+  interattivo rifiutati. **Non ancora notarizzato**: `spctl` → "Unnotarized Developer ID";
+  serve il profilo `notarytool` dell'utente.
 - Rimosso dal Pi un kiosk preesistente (Chromium a schermo intero al login, progetto
   "7 Campanili") che bloccava il desktop: non riguarda gweb, nessun impatto sul servizio.
 

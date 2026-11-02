@@ -35,7 +35,7 @@ struct RemoteGweb {
             // Il master in background (ControlPersist) erediterebbe le pipe dell'app e non le
             // chiuderebbe mai: è il blocco su "Connessione…" visto sul Mac dell'utente.
             ["-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "ServerAliveInterval=15",
-             "-o", "ControlMaster=no", host, remoteCommand(args)],
+             "-o", "ControlMaster=no"] + TeamAccess.sshOptions + [host, remoteCommand(args)],
             stdin: stdin, timeout: timeout)
     }
 

@@ -30,7 +30,9 @@ struct PopoverView: View {
 
     private var header: some View {
         HStack {
-            Image(systemName: "waveform.circle.fill").font(.title2).foregroundStyle(.tint)
+            Image(nsImage: Logo.menuBarImage(height: 18))
+                .renderingMode(.template)
+                .foregroundStyle(Color(nsColor: Logo.adaptiveGreen))
             Text("Briefing").font(.headline)
             Spacer()
             if let busy = model.busy {
@@ -304,6 +306,28 @@ struct SettingsView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
 
+            Section("Accesso al Raspberry") {
+                if let key = model.accessKey {
+                    Text(key).font(.caption.monospaced()).textSelection(.enabled).lineLimit(3)
+                    HStack {
+                        Button("Copia codice di accesso") {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(key, forType: .string)
+                        }
+                        Spacer()
+                    }
+                    Text("Mandalo a chi gestisce il Raspberry: lo autorizza con un comando (vedi Leggimi). Il codice è pubblico, non contiene password.")
+                        .font(.caption).foregroundStyle(.secondary)
+                } else {
+                    HStack {
+                        Button("Crea il mio codice di accesso") { model.createAccessKey() }
+                        Spacer()
+                    }
+                    Text("Serve solo se \"Salva e prova la connessione\" dice che il Raspberry rifiuta l'accesso. Chi usa già una propria chiave SSH non ne ha bisogno.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+
             Section("NotebookLM") {
                 LabeledContent("Account") {
                     Text(model.session?.account ?? "—").textSelection(.enabled)
@@ -332,7 +356,7 @@ struct SettingsView: View {
                         .disabled(model.session?.state == "missing")
                 }
                 .disabled(model.loginProgress != nil || model.busy != nil)
-                Text("Il login si fa qui sul Mac (si apre il browser, scegli l'account Google); la sessione passa al Raspberry via SSH e la copia sul Mac viene cancellata. Il Raspberry la rinnova da solo; se scade ricevi una notifica.")
+                Text("L'account NotebookLM è uno solo per tutto il team: è quello salvato sul Raspberry. Il login si fa qui sul Mac (si apre il browser), la sessione passa al Raspberry e la copia sul Mac viene cancellata. Cambiare account lo cambia per tutti.")
                     .font(.caption).foregroundStyle(.secondary)
             }
 

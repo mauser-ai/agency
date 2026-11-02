@@ -50,7 +50,7 @@ final class AppModel: ObservableObject {
     @Published var loginProgress: String?
     @Published var connectionTest: String?
 
-    @AppStorage("host") var host = "raspberry"
+    @AppStorage("host") var host = "riccardo@dartsvision.local"
     @AppStorage("gwebPath") var gwebPath = "~/.local/bin/gweb"
 
     private var pollTask: Task<Void, Never>?
@@ -267,6 +267,16 @@ final class AppModel: ObservableObject {
             notebooks = []
             if let s = try? await remote.session(online: false) { session = s }
             notice = "Account scollegato dal Raspberry."
+        }
+    }
+
+    // MARK: accesso dei colleghi
+
+    @Published var accessKey: String? = TeamAccess.publicKey
+
+    func createAccessKey() {
+        perform("Creo il codice di accesso…") { [self] in
+            accessKey = try await TeamAccess.createKey()
         }
     }
 

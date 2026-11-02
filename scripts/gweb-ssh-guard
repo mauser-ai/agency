@@ -1,0 +1,55 @@
+#!/usr/bin/env python3
+"""Comando forzato SSH per le chiavi del team (app Briefing sui loro Mac).
+
+In ~/.ssh/authorized_keys ogni chiave del team è aggiunta (da add-team-key.sh) come:
+    restrict,command="~/.local/bin/gweb-ssh-guard" ssh-ed25519 AAAA... nome
+Così quella chiave non apre una shell: può solo eseguire i comandi `gweb` che l'app usa,
+senza shell intermedia (niente `;`, `$()`, variabili d'ambiente o altri programmi).
+"""
+
+import json
+import os
+import shlex
+import sys
+
+GWEB = os.path.expanduser("~/.local/bin/gweb")
+
+# (comando, sottocomando) ammessi; None = qualunque sottocomando.
+ALLOWED = {
+    ("record", None),
+    ("recordings", "list"), ("recordings", "show"), ("recordings", "upload"),
+    ("notebook", "list"), ("notebook", "create"), ("notebook", "status"),
+    ("notebook", "current"), ("notebook", "login"), ("notebook", "logout"),
+    ("jobs", "list"),
+    ("doctor", None),
+}
+
+
+def deny(message: str) -> None:
+    print(json.dumps({"ok": False, "error": {
+        "code": "FORBIDDEN", "message": message,
+        "hint": "Questa chiave può usare solo i comandi dell'app Briefing."}}, ensure_ascii=False))
+    print(f"gweb-ssh-guard: {message}", file=sys.stderr)
+    sys.exit(2)
+
+
+def main() -> None:
+    raw = os.environ.get("SSH_ORIGINAL_COMMAND", "")
+    try:
+        argv = shlex.split(raw)
+    except ValueError:
+        deny("comando non valido")
+    if not argv:
+        deny("accesso interattivo non consentito")
+    if os.path.expanduser(argv[0]) not in (GWEB, "gweb"):
+        deny(f"programma non consentito: {argv[0]}")
+    args = [a for a in argv[1:] if not a.startswith("-")]
+    cmd = args[0] if args else ""
+    sub = args[1] if len(args) > 1 else None
+    if (cmd, None) not in ALLOWED and (cmd, sub) not in ALLOWED:
+        deny(f"comando gweb non consentito: {' '.join(filter(None, [cmd, sub]))}")
+    os.execv(GWEB, [GWEB, *argv[1:]])
+
+
+if __name__ == "__main__":
+    main()

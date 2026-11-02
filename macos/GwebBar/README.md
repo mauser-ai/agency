@@ -1,4 +1,4 @@
-# GwebBar — app per la barra dei menu di macOS
+# Briefing (GwebBar) — app per la barra dei menu di macOS
 
 Una finestrella attaccata alla barra in alto del Mac per comandare il registratore sul
 Raspberry senza aprire il terminale:
@@ -65,14 +65,41 @@ Serve Xcode (o i Command Line Tools con Swift 5.10 o successivo), macOS 13 o suc
 cd macos/GwebBar && ./build-app.sh --install
 ```
 
-Crea `~/Applications/GwebBar.app` (binario universale, firma ad-hoc per uso personale) e
-lo avvia. Per farlo partire a ogni accesso: icona ingranaggio → **Avvia al login**.
+Crea `~/Applications/Briefing.app` (binario universale, icona dal logo GWEB) e lo avvia.
+
+## Pacchetto per il team
+
+```bash
+cd macos/GwebBar && ./build-app.sh --dmg
+```
+
+Crea `build/Briefing-<versione>.dmg` con l'app, il collegamento ad Applicazioni e
+[LEGGIMI.md](LEGGIMI.md) (istruzioni per i colleghi e per chi gestisce il Raspberry).
+Firma con il certificato *Developer ID Application* del portachiavi. Per la notarizzazione
+(niente avvisi di Gatekeeper sugli altri Mac) crea una volta il profilo, inserendo tu la
+password per app di appleid.apple.com:
+
+```bash
+xcrun notarytool store-credentials gweb-notary --apple-id TUA_EMAIL_APPLE --team-id CL2VHCCFP7
+```
+
+poi `NOTARY_PROFILE=gweb-notary ./build-app.sh --dmg`.
+
+**Accesso dei colleghi**: l'app crea una chiave dedicata (`~/.ssh/gwebbar_ed25519`) e ne
+mostra la parte pubblica ("codice di accesso"); chi gestisce il Pi la autorizza con
+`scripts/add-team-key.sh`, che la limita ai comandi dell'app tramite
+`scripts/gweb-ssh-guard` (comando forzato SSH + `restrict`).
+
+**Icone**: `Sources/GwebBar/Logo.swift` ridisegna il logo in vettoriale (misurato sul PNG
+originale); `scripts/MakeIcon.swift` produce l'iconset macOS (griglia 1024 con forma
+824 px, fondo chiaro, ombra) e la barra dei menu usa la stessa sagoma come immagine
+*template*.
 
 ## Impostazioni (icona ingranaggio)
 
 | Campo | Default | Note |
 |---|---|---|
-| Indirizzo | `raspberry` | alias di `~/.ssh/config` oppure `utente@indirizzo`; serve l'accesso a chiave |
+| Indirizzo | `riccardo@dartsvision.local` | alias di `~/.ssh/config` oppure `utente@indirizzo`; serve l'accesso a chiave |
 | Percorso di gweb | `~/.local/bin/gweb` | sul Raspberry |
 | Account NotebookLM | — | login, rinnovo, cambio account, verifica, scollega (vedi sopra) |
 | Avvia al login del Mac | spento | elemento di login di macOS (Impostazioni di Sistema → Generali → Elementi login) |

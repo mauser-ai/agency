@@ -233,12 +233,13 @@ final class StatusItem: NSObject {
     @objc private func clicked() { onClick(item.button) }
 
     private func render() {
-        let symbol = model.isRecording ? "record.circle.fill" : (model.reachable == false ? "mic.slash" : "mic")
-        if symbol != shownSymbol, let button = item.button {
-            shownSymbol = symbol
-            let image = NSImage(systemSymbolName: symbol, accessibilityDescription: "Briefing")
-            image?.isTemplate = true
-            button.image = image
+        // Logo GWEB monocromatico (template): pallino in registrazione, attenuato se il
+        // Raspberry non risponde.
+        let state = model.isRecording ? "rec" : (model.reachable == false ? "off" : "on")
+        if state != shownSymbol, let button = item.button {
+            shownSymbol = state
+            button.image = Logo.menuBarImage(dot: state == "rec")
+            button.appearsDisabled = state == "off"
         }
         if model.isRecording {
             if ticker == nil {
