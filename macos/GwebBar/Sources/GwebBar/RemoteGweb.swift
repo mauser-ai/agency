@@ -31,8 +31,11 @@ struct RemoteGweb {
     func ssh(_ args: [String], stdin: Data? = nil, timeout: TimeInterval) async throws -> (Int32, Data, Data) {
         try await Self.exec(
             "/usr/bin/ssh",
+            // ControlMaster=no: usa una connessione condivisa se esiste, ma non ne avvia una.
+            // Il master in background (ControlPersist) erediterebbe le pipe dell'app e non le
+            // chiuderebbe mai: è il blocco su "Connessione…" visto sul Mac dell'utente.
             ["-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "ServerAliveInterval=15",
-             host, remoteCommand(args)],
+             "-o", "ControlMaster=no", host, remoteCommand(args)],
             stdin: stdin, timeout: timeout)
     }
 
@@ -62,42 +65,98 @@ struct RemoteGweb {
                       hint: stderr.isEmpty ? nil : String(stderr.suffix(300)), exitCode: code)
     }
 
+    /// Esegue un programma e ne raccoglie l'output. Il risultato arriva quando il PROCESSO
+    /// termina, non quando le pipe si chiudono: un nipote che le eredita (es. il master di
+    /// ssh) non può bloccare l'app. Dopo `timeout` il processo viene terminato.
     static func exec(_ path: String, _ args: [String], stdin: Data? = nil, environment: [String: String]? = nil,
                      timeout: TimeInterval) async throws -> (Int32, Data, Data) {
         try await withCheckedThrowingContinuation { cont in
-            DispatchQueue.global(qos: .userInitiated).async {
-                let p = Process()
-                p.executableURL = URL(fileURLWithPath: path)
-                p.arguments = args
-                if let environment { p.environment = environment }
-                let out = Pipe(), err = Pipe()
-                p.standardOutput = out
-                p.standardError = err
-                let input = stdin.map { _ in Pipe() }
-                p.standardInput = input ?? FileHandle.nullDevice
-                do {
-                    try p.run()
-                } catch {
-                    cont.resume(throwing: Failure(message: "\((path as NSString).lastPathComponent) non avviabile",
-                                                  hint: error.localizedDescription, exitCode: -1))
-                    return
-                }
-                if let input, let stdin {
-                    // Scrittura in un thread a parte: un file grande riempirebbe la pipe.
-                    DispatchQueue.global().async {
-                        input.fileHandleForWriting.write(stdin)
-                        try? input.fileHandleForWriting.close()
+            let p = Process()
+            p.executableURL = URL(fileURLWithPath: path)
+            p.arguments = args
+            if let environment { p.environment = environment }
+            let out = Pipe(), err = Pipe()
+            p.standardOutput = out
+            p.standardError = err
+            let input = stdin.map { _ in Pipe() }
+            p.standardInput = input ?? FileHandle.nullDevice
+            let outBuf = Buffer(out.fileHandleForReading), errBuf = Buffer(err.fileHandleForReading)
+            let once = Once()
+
+            p.terminationHandler = { proc in
+                // Lascia arrivare gli ultimi byte già scritti, poi legge quel che resta senza attese.
+                DispatchQueue.global().asyncAfter(deadline: .now() + 0.1) {
+                    once.run {
+                        cont.resume(returning: (proc.terminationStatus, outBuf.finish(), errBuf.finish()))
                     }
                 }
-                let killer = DispatchWorkItem { if p.isRunning { p.terminate() } }
-                DispatchQueue.global().asyncAfter(deadline: .now() + timeout, execute: killer)
-                // Lettura prima di waitUntilExit: evita blocchi con output grandi.
-                let outData = out.fileHandleForReading.readDataToEndOfFile()
-                let errData = err.fileHandleForReading.readDataToEndOfFile()
-                p.waitUntilExit()
-                killer.cancel()
-                cont.resume(returning: (p.terminationStatus, outData, errData))
             }
+            do {
+                try p.run()
+            } catch {
+                once.run {
+                    cont.resume(throwing: Failure(message: "\((path as NSString).lastPathComponent) non avviabile",
+                                                  hint: error.localizedDescription, exitCode: -1))
+                }
+                return
+            }
+            if let input, let stdin {
+                // Scrittura in un thread a parte: un file grande riempirebbe la pipe.
+                DispatchQueue.global().async {
+                    input.fileHandleForWriting.write(stdin)
+                    try? input.fileHandleForWriting.close()
+                }
+            }
+            DispatchQueue.global().asyncAfter(deadline: .now() + timeout) {
+                if p.isRunning { p.terminate() }
+            }
+        }
+    }
+
+    /// Accumula ciò che arriva su una pipe; `finish` legge il resto in modo non bloccante.
+    private final class Buffer: @unchecked Sendable {
+        private let lock = NSLock()
+        private var data = Data()
+        private let handle: FileHandle
+
+        init(_ handle: FileHandle) {
+            self.handle = handle
+            handle.readabilityHandler = { [weak self] h in
+                let chunk = h.availableData
+                if chunk.isEmpty { h.readabilityHandler = nil } else { self?.append(chunk) }
+            }
+        }
+
+        private func append(_ d: Data) {
+            lock.lock(); data.append(d); lock.unlock()
+        }
+
+        func finish() -> Data {
+            handle.readabilityHandler = nil
+            let fd = handle.fileDescriptor
+            _ = fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK)
+            var tmp = [UInt8](repeating: 0, count: 65536)
+            while true {
+                let n = read(fd, &tmp, tmp.count)
+                if n <= 0 { break }
+                append(Data(tmp[0..<n]))
+            }
+            try? handle.close()
+            lock.lock(); defer { lock.unlock() }
+            return data
+        }
+    }
+
+    private final class Once: @unchecked Sendable {
+        private let lock = NSLock()
+        private var done = false
+
+        func run(_ body: () -> Void) {
+            lock.lock()
+            let first = !done
+            done = true
+            lock.unlock()
+            if first { body() }
         }
     }
 

@@ -1,6 +1,29 @@
 import Foundation
+import os
 import ServiceManagement
 import SwiftUI
+
+/// Diagnostica: ~/Library/Logs/GwebBar.log (ultime righe) e il log di sistema
+/// (`log stream --predicate 'subsystem == "local.agency-briefing.gwebbar"'`).
+enum Diag {
+    private static let logger = Logger(subsystem: "local.agency-briefing.gwebbar", category: "app")
+    private static let queue = DispatchQueue(label: "gwebbar.diag")
+    static let file = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/GwebBar.log")
+
+    static func log(_ message: String) {
+        logger.notice("\(message, privacy: .public)")
+        let line = "\(ISO8601DateFormatter().string(from: Date())) \(message)\n"
+        queue.async {
+            if let h = try? FileHandle(forWritingTo: file) {
+                h.seekToEndOfFile()
+                h.write(Data(line.utf8))
+                try? h.close()
+            } else {
+                try? Data(line.utf8).write(to: file)
+            }
+        }
+    }
+}
 
 @MainActor
 final class AppModel: ObservableObject {
@@ -41,6 +64,7 @@ final class AppModel: ObservableObject {
 
     init(autoStart: Bool = true) {
         if autoStart {
+            Diag.log("avvio \(Bundle.main.bundlePath)")
             Notifier.requestAuthorization()
             startPolling()
         }
@@ -51,6 +75,7 @@ final class AppModel: ObservableObject {
     func startPolling() {
         pollTask?.cancel()
         pollTask = Task { [weak self] in
+            Diag.log("controllo periodico avviato")
             while !Task.isCancelled {
                 await self?.refresh()
                 // Più frequente mentre qualcosa cambia (registrazione, codifica, caricamento).
@@ -67,8 +92,10 @@ final class AppModel: ObservableObject {
     }
 
     func refresh() async {
+        Diag.log("refresh verso \(host)")
         do {
             let st = try await remote.status()
+            Diag.log("stato ricevuto: attiva=\(st.active)")
             reachable = true
             daemonAlive = st.daemon?.alive ?? true
             if st.active, let rec = st.recording {
@@ -87,9 +114,12 @@ final class AppModel: ObservableObject {
             if loginProgress == nil, let s = try? await remote.session(online: false) { updateSession(s) }
             if error?.isUnreachable == true { error = nil }
         } catch let f as RemoteGweb.Failure {
+            Diag.log("refresh fallito: \(f.message) \(f.hint ?? "") (codice \(f.exitCode))")
             reachable = !f.isUnreachable
             if f.isUnreachable { error = f }
-        } catch {}
+        } catch {
+            Diag.log("refresh: \(error.localizedDescription)")
+        }
     }
 
     // MARK: azioni

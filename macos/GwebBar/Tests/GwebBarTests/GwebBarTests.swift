@@ -112,4 +112,28 @@ final class GwebBarTests: XCTestCase {
         m.updateSession(expired)  // nessun nuovo avviso: lo stato non è cambiato
         XCTAssertTrue(m.session!.needsLogin)
     }
+
+    /// Regressione: il master di ssh (ControlPersist) ereditava le pipe e l'app restava su
+    /// "Connessione…". Qui un figlio in background tiene aperto stdout per 30 s.
+    func testExecReturnsWhenProcessExitsEvenIfPipeStaysOpen() async throws {
+        let t0 = Date()
+        let (code, out, _) = try await RemoteGweb.exec("/bin/sh", ["-c", "sleep 30 & echo ciao"], timeout: 10)
+        XCTAssertEqual(code, 0)
+        XCTAssertEqual(String(decoding: out, as: UTF8.self), "ciao\n")
+        XCTAssertLessThan(Date().timeIntervalSince(t0), 3)
+    }
+
+    func testExecTimeoutTerminates() async throws {
+        let t0 = Date()
+        let (code, _, _) = try await RemoteGweb.exec("/bin/sleep", ["20"], timeout: 1)
+        XCTAssertNotEqual(code, 0)
+        XCTAssertLessThan(Date().timeIntervalSince(t0), 4)
+    }
+
+    func testExecPassesStdinAndLargeOutput() async throws {
+        let payload = Data(String(repeating: "x", count: 300_000).utf8)
+        let (code, out, _) = try await RemoteGweb.exec("/bin/cat", [], stdin: payload, timeout: 10)
+        XCTAssertEqual(code, 0)
+        XCTAssertEqual(out.count, payload.count)
+    }
 }

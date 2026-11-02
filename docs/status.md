@@ -74,6 +74,14 @@ SD 115 GB (87 GB liberi). Utente `riccardo` (non `pi`), host `DartsVision`, ragg
 - App Mac: sul MacBook dell'utente (notch, 21 elementi nella barra, macOS 26.4) l'icona
   non risultava visibile (nessuna finestra di stato dell'app). Aggiunta la finestra
   "Briefing" (stessa interfaccia) aperta all'avvio e alla riapertura; verificato che compare.
+  Poi l'app risultava "non risponde" e il pulsante Stop non rispondeva: `MenuBarExtra` di
+  SwiftUI ridisegnava l'icona all'infinito (`updateButton` → `setImage` → layout, 72% CPU,
+  stack letto con lldb). Sostituito con `NSStatusItem` + `NSPopover` in AppKit (icona
+  aggiornata solo al cambio di stato). Inoltre `ssh` avviato dall'app poteva far nascere il
+  master di ControlPersist che ereditava le pipe dell'app (lettura mai conclusa): ora
+  `-o ControlMaster=no` e risultato alla fine del processo, non alla chiusura delle pipe
+  (test di regressione). Diagnostica in `~/Library/Logs/GwebBar.log`. Verificato: CPU 0%,
+  primo stato ricevuto 1 s dopo l'avvio; 18 test Swift + test reali (`GWEBBAR_LIVE`).
 - Rimosso dal Pi un kiosk preesistente (Chromium a schermo intero al login, progetto
   "7 Campanili") che bloccava il desktop: non riguarda gweb, nessun impatto sul servizio.
 

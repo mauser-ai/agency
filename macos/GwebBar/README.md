@@ -88,6 +88,7 @@ lo avvia. Per farlo partire a ogni accesso: icona ingranaggio → **Avvia al log
 | "Serve Python 3.10 o successivo sul Mac" | installa Python da python.org, poi riprova il login |
 | "Login non completato" | la finestra del browser è stata chiusa o sono passati 10 minuti: riprova |
 | "Registrazione non riuscita" | `ssh raspberry 'gweb doctor'` (microfono) |
+| Altro | registro dell'app: `~/Library/Logs/GwebBar.log` |
 
 ## Sviluppo
 
@@ -98,6 +99,8 @@ swift build && swift test
 ```bash
 SNAPSHOT_DIR=/tmp/gwebbar-snap swift test --filter SnapshotTests
 ```
+
+Prove reali (sola lettura) contro il Raspberry: `GWEBBAR_LIVE=raspberry swift test --filter LiveTests`.
 
 Il secondo comando salva in PNG la finestrella nei suoi stati principali (riposo,
 registrazione, scelta del notebook), sia in modalità chiara sia scura, per un controllo
