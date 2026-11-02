@@ -272,7 +272,7 @@ systemctl --user list-timers gweb-cleanup.timer
 
 | Sintomo | Causa probabile | Cosa fare |
 |---|---|---|
-| `Nessun microfono USB di cattura trovato` (exit 9) | Microfono scollegato o non riconosciuto | `arecord -l`, `lsusb`; `gweb audio select <ID scheda>` |
+| `Nessun microfono di cattura trovato` (exit 9) | Microfono scollegato o non riconosciuto; HAT non montato o driver non caricato | `arecord -l`, `lsusb`, `dmesg \| grep -i wm8960`; `gweb audio select <ID scheda>` |
 | `Device or resource busy` | Microfono usato da un'altra applicazione o da una registrazione | `gweb record status`; ferma l'altro programma |
 | `audio test` esito "silenzio" | Guadagno a zero / mute | `alsamixer -c <ID scheda>` (F4 = capture) |
 | `Permission denied` su `/dev/snd` | Utente non nel gruppo audio | `sudo usermod -aG audio $USER`, poi nuovo login e `gweb service restart` |

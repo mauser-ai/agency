@@ -95,7 +95,8 @@ def list_capture_devices(root: Path | None = None) -> list[CaptureDevice]:
 def resolve_device(spec: str, root: Path | None = None) -> tuple[str, CaptureDevice | None]:
     """Converte la configurazione in un PCM ALSA. Ritorna (pcm, dispositivo o None).
 
-    - ``auto``: primo dispositivo di cattura USB
+    - ``auto``: primo dispositivo di cattura USB; se non ce ne sono, la prima scheda di
+      cattura non USB (es. HAT I2S con WM8960 sui pin GPIO)
     - stringa con ``:`` o nomi ALSA noti: usata così com'è (es. ``plughw:CARD=Device,DEV=0``)
     - altrimenti: ID scheda o parte del nome
     """
@@ -109,15 +110,17 @@ def resolve_device(spec: str, root: Path | None = None) -> tuple[str, CaptureDev
         return spec, match
     devices = list_capture_devices(root)
     if spec == "auto":
-        usb = [d for d in devices if d.is_usb]
-        if not usb:
+        # Le schede HDMI e il jack del Pi sono solo riproduzione: qui non compaiono.
+        candidates = [d for d in devices if d.is_usb] or devices
+        if not candidates:
             raise DeviceError(
-                "Nessun microfono USB di cattura trovato",
-                hint="Collega il microfono e verifica con 'gweb audio devices' "
-                     "(o 'arecord -l'). Puoi anche impostare audio.device manualmente.",
+                "Nessun microfono di cattura trovato (né USB né HAT)",
+                hint="Collega il microfono USB o verifica che l'HAT sia riconosciuto "
+                     "('arecord -l', 'dmesg | grep -i wm8960'). Puoi anche impostare "
+                     "audio.device manualmente.",
                 details={"devices": [d.to_dict() for d in devices]},
             )
-        return usb[0].alsa_pcm, usb[0]
+        return candidates[0].alsa_pcm, candidates[0]
     exact = [d for d in devices if d.card_id == spec]
     if not exact:
         exact = [d for d in devices if spec.lower() in (d.name + " " + d.long_name).lower()]

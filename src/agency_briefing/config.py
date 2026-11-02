@@ -38,7 +38,7 @@ DEFAULTS: dict[str, dict[str, Any]] = {
         "credentials_dir": str(_xdg("XDG_CONFIG_HOME", ".config") / "gweb" / "credentials"),
     },
     "audio": {
-        # "auto" = primo dispositivo di cattura USB; oppure ID scheda ALSA (es. "Device")
+        # "auto" = primo microfono USB, altrimenti prima scheda di cattura (HAT); oppure ID scheda ALSA (es. "Device")
         # oppure PCM ALSA completo (es. "plughw:CARD=Device,DEV=0"). Mai l'indice numerico.
         "device": "auto",
         "sample_rate": 48000,

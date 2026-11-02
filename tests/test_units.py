@@ -46,6 +46,34 @@ def test_device_discovery_by_card_id(asound):
         resolve_device("auto")
 
 
+HAT_CARDS = """\
+ 0 [vc4hdmi0       ]: vc4-hdmi - vc4-hdmi-0
+                      vc4-hdmi-0
+ 2 [Headphones     ]: bcm2835_headpho - bcm2835 Headphones
+                      bcm2835 Headphones
+ 3 [wm8960soundcard]: wm8960-soundca - wm8960-soundcard
+                      wm8960-soundcard
+"""
+HAT_PCM = """\
+00-00: MAI PCM i2s-hifi-0 : MAI PCM i2s-hifi-0 : playback 1
+02-00: bcm2835 Headphones : bcm2835 Headphones : playback 8
+03-00: bcm2835-i2s-wm8960-hifi wm8960-hifi-0 : bcm2835-i2s-wm8960-hifi wm8960-hifi-0 : playback 1 : capture 1
+"""
+
+
+def test_auto_falls_back_to_i2s_hat_and_prefers_usb(asound):
+    # ReSpeaker 2-Mic HAT v1 (WM8960, dtoverlay=wm8960-soundcard) come su DartsVision.
+    (asound / "cards").write_text(HAT_CARDS)
+    (asound / "pcm").write_text(HAT_PCM)
+    pcm, dev = resolve_device("auto")
+    assert pcm == "plughw:CARD=wm8960soundcard,DEV=0"
+    assert not dev.is_usb
+    from tests.conftest import CARDS, PCM
+    (asound / "cards").write_text(HAT_CARDS + CARDS.replace(" 3 [", " 4 ["))
+    (asound / "pcm").write_text(HAT_PCM + PCM.replace("03-00", "04-00"))
+    assert resolve_device("auto")[0] == "plughw:CARD=Device,DEV=0"
+
+
 def _wav(path, seconds=1.0, rate=16000, broken=False):
     n = int(seconds * rate)
     data = b"".join(struct.pack("<h", 1000 if i % 2 else -1000) for i in range(n))

@@ -34,7 +34,8 @@ del DB, così la CLI non riscrive mai `config.toml`.
    ID e titolo: le modifiche successive al predefinito non la toccano). L'indice unico
    parziale `ux_one_active_recording` impedisce due registrazioni attive.
 2. Il demone (tick 0,5 s) prende la richiesta, risolve il microfono (`auto` = prima scheda
-   USB con cattura; mai l'indice numerico), avvia
+   USB con cattura, altrimenti la prima scheda di cattura non USB, es. HAT I2S; mai
+   l'indice numerico), avvia
    `arecord -D plughw:CARD=<id>,DEV=0 -f S16_LE -c 1 -r 48000 -t wav --max-file-time 300 partNNN.wav`.
    Se il processo muore entro 0,5 s → stato `failed` con il messaggio di arecord.
 3. Monitoraggio ogni tick: heartbeat (2 s), richiesta di stop, durata massima, spazio (10 s,
