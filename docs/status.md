@@ -71,6 +71,9 @@ SD 115 GB (87 GB liberi). Utente `riccardo` (non `pi`), host `DartsVision`, ragg
   `default` intatto; 14 test Swift (anche rendering di banner e impostazioni).
   **Non verificato**: un login Google completo avviato dall'app (richiede l'utente nel
   browser) e la notifica reale a sessione scaduta.
+- App Mac: sul MacBook dell'utente (notch, 21 elementi nella barra, macOS 26.4) l'icona
+  non risultava visibile (nessuna finestra di stato dell'app). Aggiunta la finestra
+  "Briefing" (stessa interfaccia) aperta all'avvio e alla riapertura; verificato che compare.
 - Rimosso dal Pi un kiosk preesistente (Chromium a schermo intero al login, progetto
   "7 Campanili") che bloccava il desktop: non riguarda gweb, nessun impatto sul servizio.
 

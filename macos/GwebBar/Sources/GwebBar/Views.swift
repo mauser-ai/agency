@@ -2,7 +2,6 @@ import SwiftUI
 
 struct PopoverView: View {
     @ObservedObject var model: AppModel
-    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -52,10 +51,7 @@ struct PopoverView: View {
                  : model.reachable == false ? "Raspberry non raggiungibile" : "Connessione…")
                 .font(.caption).foregroundStyle(.secondary)
             Spacer()
-            Button {
-                openWindow(id: SettingsView.windowID)
-                NSApp.activate(ignoringOtherApps: true)
-            } label: { Image(systemName: "gearshape") }
+            Button { Windows.shared.showSettings() } label: { Image(systemName: "gearshape") }
                 .buttonStyle(.borderless).help("Impostazioni")
             Button { NSApp.terminate(nil) } label: { Image(systemName: "power") }
                 .buttonStyle(.borderless).help("Esci")
@@ -282,7 +278,6 @@ struct SessionBanner: View {
 }
 
 struct SettingsView: View {
-    static let windowID = "settings"
     @ObservedObject var model: AppModel
     @State private var hostDraft = ""
     @State private var pathDraft = ""

@@ -15,6 +15,12 @@ su NotebookLM. Da quando premi *Stop* puoi chiudere il Mac. Nell'elenco vedi lo 
 
 Durante la registrazione l'icona nella barra mostra il pallino e il tempo trascorso.
 
+La stessa interfaccia è anche in una **finestra normale "Briefing"**, che si apre all'avvio
+e ogni volta che riapri l'app (Spotlight: *GwebBar*, oppure `~/Applications/GwebBar.app`).
+Serve quando l'icona nella barra non si vede: sui Mac con il notch macOS nasconde le icone
+che non ci stanno, e su macOS 26 un'app nuova può dover essere consentita in Impostazioni di
+Sistema → Barra dei menu.
+
 ## Account NotebookLM dall'app
 
 Ingranaggio → **Impostazioni**, sezione NotebookLM:
@@ -75,6 +81,7 @@ lo avvia. Per farlo partire a ogni accesso: icona ingranaggio → **Avvia al log
 
 | Sintomo | Cosa fare |
 |---|---|
+| Icona nella barra assente | Apri l'app da Spotlight (*GwebBar*): compare la finestra "Briefing". Per l'icona: meno icone nella barra, o consentila in Impostazioni di Sistema → Barra dei menu |
 | "Raspberry non raggiungibile" | `ssh raspberry` dal Terminale deve entrare senza password |
 | "Servizio gweb fermo sul Raspberry" | `ssh raspberry 'systemctl --user start gweb'` |
 | Banner "NotebookLM: sessione scaduta" | *Accedi con Google…* nel banner o nelle Impostazioni |

@@ -1,23 +1,69 @@
+import AppKit
 import SwiftUI
 
 @main
 struct GwebBarApp: App {
-    @StateObject private var model = AppModel()
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
 
     var body: some Scene {
         MenuBarExtra {
-            PopoverView(model: model)
+            PopoverView(model: Windows.shared.model)
         } label: {
-            MenuBarLabel(model: model)
+            MenuBarLabel(model: Windows.shared.model)
         }
         .menuBarExtraStyle(.window)
+    }
+}
 
-        // Finestra vera (non un foglio nella finestrella): resta aperta mentre il browser del
-        // login prende il primo piano.
-        Window("Impostazioni Briefing", id: SettingsView.windowID) {
+/// L'icona nella barra può non vedersi (notch con molte icone, permessi della barra di
+/// macOS 26): la stessa interfaccia è anche in una finestra normale, aperta all'avvio e a ogni
+/// riapertura dell'app (Spotlight, Finder).
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        Windows.shared.showMain()
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        Windows.shared.showMain()
+        return false
+    }
+}
+
+/// Finestre AppKit con contenuto SwiftUI: apribili da qualunque punto (anche dalla finestrella
+/// della barra), restano aperte mentre il browser del login passa in primo piano.
+@MainActor
+final class Windows {
+    static let shared = Windows()
+    let model = AppModel()
+    private var main: NSWindow?
+    private var settings: NSWindow?
+
+    func showMain() {
+        main = show(main, title: "Briefing", autosave: "GwebBarMain") {
+            PopoverView(model: model)
+        }
+    }
+
+    func showSettings() {
+        settings = show(settings, title: "Impostazioni Briefing", autosave: "GwebBarSettings") {
             SettingsView(model: model)
         }
-        .windowResizability(.contentSize)
+    }
+
+    private func show<V: View>(_ existing: NSWindow?, title: String, autosave: String,
+                               @ViewBuilder content: () -> V) -> NSWindow {
+        let window = existing ?? {
+            let w = NSWindow(contentViewController: NSHostingController(rootView: content()))
+            w.title = title
+            w.styleMask = [.titled, .closable, .miniaturizable]
+            w.isReleasedWhenClosed = false
+            w.setFrameAutosaveName(autosave)
+            if !w.setFrameUsingName(autosave) { w.center() }
+            return w
+        }()
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
+        return window
     }
 }
 
