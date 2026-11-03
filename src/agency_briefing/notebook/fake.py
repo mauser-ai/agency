@@ -168,6 +168,9 @@ class _FakeSession(NotebookSession):
         if not path.is_file():
             raise PermanentRemoteError(f"File non trovato: {path}")
         will_fail = self.maybe_fail("processing_error")
+        # Come notebooklm-py quando la rinomina best-effort non riesce: resta il nome del file.
+        if self.maybe_fail("title_lost"):
+            title = path.name
         ready_after = float(os.environ.get("GWEB_FAKE_READY_AFTER", "1"))
         src = {"id": "src-" + uuid.uuid4().hex[:12], "title": title,
                "status": SourceState.PROCESSING, "ready_at": time.time() + ready_after,
@@ -179,6 +182,15 @@ class _FakeSession(NotebookSession):
         if self.maybe_fail("timeout_after_upload"):
             raise UncertainUpload("Timeout dopo l'invio (simulato, fonte creata)")
         return SourceInfo(id=src["id"], title=title, status=SourceState.PROCESSING, kind="audio")
+
+    async def rename_source(self, notebook_id: str, source_id: str, title: str) -> None:
+        self.maybe_fail("network")
+        with self.b._locked() as st:
+            for src in self._nb(st, notebook_id)["sources"]:
+                if src["id"] == source_id:
+                    src["title"] = title
+                    return
+        raise PermanentRemoteError(f"Fonte non trovata: {source_id}")
 
     async def ask(self, notebook_id: str, question: str,
                   source_ids: list[str] | None = None) -> Answer:

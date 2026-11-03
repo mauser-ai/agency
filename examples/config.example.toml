@@ -37,12 +37,12 @@ upload_format = "m4a"
 bitrate = "96k"
 # Riduzione rumore applicata al file caricato (i WAV originali restano intatti).
 # "" = disattivata. Per applicarla a una registrazione esistente: gweb recordings finalize ID
-audio_filter = "highpass=f=90,afftdn=nf=-25:nr=20:tn=1"
+audio_filter = "highpass=f=90,afftdn=nf=-25:nr=20:tn=1,dynaudnorm=f=300:g=15:p=0.9:m=8,alimiter=limit=0.95"
 
 [upload]
 # Caricamento automatico dopo lo stop (default: esplicito con `gweb recordings upload`)
 auto_after_stop = false
-title_template = "{title} - {date} [{id}]"
+title_template = "{title}"   # segnaposto: {title} {date} {id}
 max_attempts = 8
 backoff_base_seconds = 30
 backoff_max_seconds = 3600

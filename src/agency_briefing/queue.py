@@ -23,6 +23,7 @@ Regole anti-duplicato:
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import random
 import sqlite3
@@ -45,7 +46,7 @@ from .errors import (
     UsageError,
 )
 from .models import JOB_TO_UPLOAD_STATUS, Job, JobState, Recording, RecState
-from .notebook.base import NotebookBackend, SourceState, source_matches_recording
+from .notebook.base import NotebookBackend, SourceState, find_recording_sources
 from .recordings import RecordingStore
 
 log = logging.getLogger(__name__)
@@ -55,9 +56,7 @@ def render_remote_title(cfg: Config, rec: Recording) -> str:
     created = parse_iso(rec.started_at or rec.created_at)
     date = created.astimezone().strftime("%Y-%m-%d %H:%M") if created else ""
     title = cfg.get("upload.title_template").format(title=rec.title, date=date, id=rec.id)
-    if f"[{rec.id}]" not in title:  # il marcatore è indispensabile per la riconciliazione
-        title = f"{title} [{rec.id}]"
-    return title
+    return title.strip() or rec.title
 
 
 class JobQueue:
@@ -287,8 +286,14 @@ class UploadWorker:
 
     async def _find_existing(self, s, job: Job, rec: Recording):
         sources = await s.list_sources(job.notebook_id)
+        if job.known_sources is None and job.attempts == 0:
+            # Prima di qualsiasi invio: le fonti presenti ora non possono essere la nostra.
+            job.known_sources = json.dumps(sorted(x.id for x in sources))
+            self.q._set(job.id, known_sources=job.known_sources)
+        known = set(json.loads(job.known_sources)) if job.known_sources else None
         filename = Path(rec.file_path).name if rec.file_path else None
-        return [x for x in sources if source_matches_recording(x, rec.id, filename)]
+        return find_recording_sources(sources, rec.id, filename=filename,
+                                      remote_title=job.remote_title, known_ids=known)
 
     async def _upload(self, s, job: Job, rec: Recording) -> None:
         q = self.q
@@ -333,6 +338,19 @@ class UploadWorker:
         q.db.add_event("uploaded", f"Upload completato, fonte {src.id} in elaborazione",
                        job_id=job.id, recording_id=rec.id)
 
+    async def _ensure_title(self, s, job: Job, src) -> None:
+        """notebooklm-py rinomina subito dopo l'invio e, se non riesce, lascia il nome del
+        file: a fonte pronta il titolo scelto si applica in modo affidabile."""
+        if not job.remote_title or src.title == job.remote_title:
+            return
+        try:
+            await s.rename_source(job.notebook_id, src.id, job.remote_title)
+            self.q.db.add_event("renamed", f"Titolo della fonte: {job.remote_title}",
+                                job_id=job.id, recording_id=job.recording_id)
+        except RemoteError as exc:
+            self.q.db.add_event("rename_failed", f"Titolo non applicato: {exc}", level="warning",
+                                job_id=job.id, recording_id=job.recording_id)
+
     def _poll(self) -> float:
         return float(self.cfg.get("upload.processing_poll_seconds"))
 
@@ -346,6 +364,7 @@ class UploadWorker:
                    finished_at=iso())
             return
         if src.status == SourceState.READY:
+            await self._ensure_title(s, job, src)
             q._set(job.id, state=JobState.SUCCEEDED, remote_status=src.status,
                    finished_at=iso(), error_code=None, last_error=None)
             q.db.add_event("source_ready", f"Fonte {src.id} pronta", job_id=job.id,

@@ -224,3 +224,35 @@ def test_upload_rejected_while_still_recording(app):
     app.store.update(rec["id"], state=RecState.RECORDING)
     with pytest.raises(NotReady):
         app.recordings_upload(rec["id"], "nb-demo-interno")
+
+
+def _sources(app, notebook="nb-demo-cliente-rossi"):
+    st = json.loads((app.cfg.state_dir / "fake-notebooklm.json").read_text())
+    return next(n for n in st["notebooks"] if n["id"] == notebook)["sources"]
+
+
+def test_source_gets_exactly_the_chosen_title(app):
+    rec = _ready_recording(app, title="Riunione Orsini preventivatore")
+    app.queue.enqueue(app.store.get(rec["id"]), rec["notebook_id"])
+    assert _drain(app)[-1].state == JobState.SUCCEEDED
+    assert [s["title"] for s in _sources(app)] == ["Riunione Orsini preventivatore"]
+
+
+def test_same_title_as_older_source_is_not_mistaken_for_ours(app):
+    first = _ready_recording(app, title="Brief settimanale")
+    app.queue.enqueue(app.store.get(first["id"]), first["notebook_id"])
+    _drain(app)
+    second = _ready_recording(app, title="Brief settimanale")
+    app.queue.enqueue(app.store.get(second["id"]), second["notebook_id"])
+    jobs = _drain(app)
+    assert jobs[-1].state == JobState.SUCCEEDED
+    assert _uploads(app) == 2, "una fonte omonima già esistente non è la nostra"
+    assert len({s["id"] for s in _sources(app)}) == 2
+
+
+def test_lost_title_is_restored_when_source_is_ready(app, monkeypatch):
+    rec = _ready_recording(app, title="Kickoff sito Tritium")
+    app.queue.enqueue(app.store.get(rec["id"]), rec["notebook_id"])
+    monkeypatch.setenv("GWEB_FAKE_FAIL", "title_lost:1")
+    assert _drain(app)[-1].state == JobState.SUCCEEDED
+    assert [s["title"] for s in _sources(app)] == ["Kickoff sito Tritium"]

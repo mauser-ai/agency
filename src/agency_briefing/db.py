@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 # Colonne aggiunte dopo la v1: (tabella, colonna, tipo). Applicate con ALTER TABLE.
 MIGRATIONS = [
@@ -28,6 +28,8 @@ MIGRATIONS = [
     ("recordings", "purged_bytes", "INTEGER"),
     # upload chiesto durante la finalizzazione: il demone lo accoda appena il file è pronto
     ("recordings", "upload_on_ready", "INTEGER NOT NULL DEFAULT 0"),
+    # ID (JSON) delle fonti del notebook prima del primo invio: la fonte nuova è quella che manca
+    ("jobs", "known_sources", "TEXT"),
 ]
 
 SCHEMA = """
@@ -113,6 +115,7 @@ CREATE TABLE IF NOT EXISTS jobs (
     error_code TEXT,
     last_error TEXT,
     remote_title TEXT NOT NULL,
+    known_sources TEXT,
     remote_source_id TEXT,
     remote_status TEXT,
     processing_error_since TEXT,

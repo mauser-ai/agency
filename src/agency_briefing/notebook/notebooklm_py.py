@@ -180,6 +180,10 @@ class _Session(NotebookSession):
             info.status = SourceState.PROCESSING
         return info
 
+    async def rename_source(self, notebook_id: str, source_id: str, title: str) -> None:
+        await self._call(self.client.sources.rename(notebook_id, source_id, title,
+                                                    return_object=False))
+
     async def ask(self, notebook_id: str, question: str,
                   source_ids: list[str] | None = None) -> Answer:
         result = await self._call(

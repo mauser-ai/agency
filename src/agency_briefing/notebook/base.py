@@ -114,6 +114,10 @@ class NotebookSession(ABC):
         """Trasferisce il file. Il ritorno significa *upload completato*, NON fonte pronta."""
 
     @abstractmethod
+    async def rename_source(self, notebook_id: str, source_id: str, title: str) -> None:
+        """Cambia il titolo visibile di una fonte."""
+
+    @abstractmethod
     async def ask(self, notebook_id: str, question: str,
                   source_ids: list[str] | None = None) -> Answer: ...
 
@@ -163,6 +167,24 @@ def source_matches_recording(source: SourceInfo, recording_id: str,
     if filename and title == filename:
         return True
     return title.startswith(recording_id + ".")
+
+
+def find_recording_sources(sources: list[SourceInfo], recording_id: str, *,
+                           filename: str | None, remote_title: str,
+                           known_ids: set[str] | None) -> list[SourceInfo]:
+    """Fonti create da questa registrazione.
+
+    Con ``known_ids`` (fonti presenti prima del primo invio) basta il titolo scelto, anche
+    senza marcatore: una fonte con lo stesso titolo già esistente non viene confusa con la
+    nostra. Senza (lavori creati da versioni precedenti) vale solo marcatore o nome file.
+    """
+    found = []
+    for src in sources:
+        if source_matches_recording(src, recording_id, filename):
+            found.append(src)
+        elif known_ids is not None and src.id not in known_ids and src.title == remote_title:
+            found.append(src)
+    return found
 
 
 @asynccontextmanager

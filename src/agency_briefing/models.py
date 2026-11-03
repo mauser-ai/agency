@@ -141,6 +141,7 @@ class Job:
     processing_error_since: str | None = None
     uploaded_at: str | None = None
     finished_at: str | None = None
+    known_sources: str | None = None
 
     @classmethod
     def from_row(cls, row) -> Job:

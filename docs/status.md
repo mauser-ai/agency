@@ -1,6 +1,6 @@
 # Stato del progetto
 
-Ultimo aggiornamento: 2026-11-02 · versione 0.2.0
+Ultimo aggiornamento: 2026-11-03 · versione 0.2.0
 
 ## Ambiente in cui è stato sviluppato e verificato
 Il codice è stato scritto e testato in un **container cloud x86_64 (Ubuntu 24.04, Python
@@ -126,7 +126,27 @@ Correzioni emerse sul Pi:
   più forti e `anlmdn` (più lento, meno efficace). Approvato all'ascolto dall'utente
   (2026-11-02) rispetto alle varianti leggera e forte; `""` disattiva il filtro. Test: `test_encode_applies_audio_filter`.
 
-## Completato e verificato (test automatici: `pytest`, 49 test, ~25 s x86 / ~55 s Pi 4)
+## In ufficio (2026-11-03)
+- Pi spostato sul Wi-Fi Fastweb dell'ufficio ("G-WiFi 5.0", WPA2+WPA3), IP DHCP
+  192.168.1.178. `dartsvision.local` non risolve lì: nell'app e in `~/.ssh/config` si usa l'IP.
+  Il Mac non raggiungeva il Pi (ARP senza risposta, altri client Wi-Fi sì; il modem non ha
+  opzioni di isolamento): risolto riattivando la connessione NetworkManager. Risparmio
+  energetico Wi-Fi disattivato nel profilo (`802-11-wireless.powersave 2`).
+- **Titolo della fonte**: su NotebookLM la prima fonte reale è arrivata come
+  `r261103-150950-1b02.m4a`: notebooklm-py rinomina subito dopo l'invio e, se non riesce,
+  lascia il nome del file (solo un warning). Ora il titolo è esattamente quello scelto
+  (`upload.title_template = "{title}"`, senza data né `[ID]`), riapplicato con
+  `sources.rename` quando la fonte è pronta. Per la riconciliazione senza marcatore il job
+  salva gli ID delle fonti presenti prima del primo invio (`jobs.known_sources`, schema v4):
+  una fonte omonima già esistente non viene scambiata per la nostra. I job creati prima
+  restano sul vecchio criterio (marcatore o nome file).
+- **Voce più alta da lontano**: `dynaudnorm=f=300:g=15:p=0.9:m=8,alimiter=limit=0.95` dopo la
+  riduzione rumore. Su 5 min di briefing reale: voce -28,9 → -17,3 dBFS (+11,6 dB), rumore di
+  fondo invariato (-53,8 → -53,3 dBFS), picchi ≤ -0,6 dBFS, ~30× tempo reale sul Pi 4. Il
+  guadagno analogico dell'HAT resta com'è (Capture 63/63, boost +20 dB): i picchi grezzi
+  arrivano già a -0,5 dBFS, alzarlo farebbe saturare chi parla vicino.
+
+## Completato e verificato (test automatici: `pytest`, 52 test, ~25 s x86 / ~55 s Pi 4)
 - Configurazione TOML con default, validazione di chiavi e tipi, `config init/show/path`.
 - Scoperta microfono da `/proc/asound` (finto) per **ID scheda**, `auto` = primo USB,
   errore operativo se assente.

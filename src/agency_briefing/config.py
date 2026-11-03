@@ -60,14 +60,16 @@ DEFAULTS: dict[str, dict[str, Any]] = {
         "upload_format": "m4a",  # m4a | mp3 | wav
         "bitrate": "96k",
         # Filtro ffmpeg sul file caricato (non sui WAV originali). Default: taglio sotto
-        # 90 Hz + riduzione rumore FFT adattiva; "" = nessun filtro.
-        "audio_filter": "highpass=f=90,afftdn=nf=-25:nr=20:tn=1",
+        # 90 Hz + riduzione rumore FFT adattiva + livellamento della voce (dynaudnorm, max 8x:
+        # chi parla lontano dal microfono si sente come chi è vicino) + limitatore; "" = nessun filtro.
+        "audio_filter": "highpass=f=90,afftdn=nf=-25:nr=20:tn=1,dynaudnorm=f=300:g=15:p=0.9:m=8,alimiter=limit=0.95",
         "ffmpeg": "ffmpeg",
         "ffprobe": "ffprobe",
     },
     "upload": {
         "auto_after_stop": False,
-        "title_template": "{title} - {date} [{id}]",
+        # Titolo della fonte su NotebookLM. Segnaposto: {title} {date} {id}.
+        "title_template": "{title}",
         "max_attempts": 8,
         "backoff_base_seconds": 30,
         "backoff_max_seconds": 3600,
